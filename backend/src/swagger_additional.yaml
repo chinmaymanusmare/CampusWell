@@ -1,0 +1,513 @@
+openapi: 3.0.3
+info:
+  title: CampusWell - IIT Dharwad Wellness Center API
+  description: >
+    CampusWell is a wellness management platform for IIT Dharwad community.
+    It integrates student health, appointments, pharmacy, and anonymous counseling.
+  version: 1.0.0
+  contact:
+    name: Team CampusWell
+    email: cs25mt011@iitdh.ac.in, cs25mt013@iitdh.ac.in, cs25mt014@iitdh.ac.in
+
+servers:
+  - url: http://localhost:3000
+
+tags:
+  - name: Authentication
+  - name: Anonymous Concerns
+  - name: Appointments
+  - name: Health Records
+  - name: Referrals
+  - name: Pharmacy
+  - name: Admin
+  - name: Notifications
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []   # Apply globally (all endpoints require JWT unless overridden)
+
+paths:
+
+  ##############################
+  # AUTHENTICATION
+  ##############################
+
+  /signup:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                password: { type: string }
+                roll_no: { type: string }
+      responses:
+        "201": { description: User registered successfully }
+      security: []   # Public endpoint, no JWT required
+
+  /login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string,  example: "John Doe" }
+                password: { type: string , example: "John Doe"}
+      responses:
+        "200": { description: Login successful }
+        "401": { description: Invalid credentials }
+      security: []   # Public endpoint, no JWT required
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: Logout user
+      responses:
+        "200": { description: User logged out successfully }
+
+  /users:
+    get:
+      tags: [Authentication]
+      summary: List all users (Admin only)
+      responses:
+        "200": { description: List of users }
+
+  /users/{id}:
+    get:
+      tags: [Authentication]
+      summary: Get user details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: User details returned }
+    put:
+      tags: [Authentication]
+      summary: Update user profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                role: { type: string }
+      responses:
+        "200": { description: Profile updated }
+          ##############################
+  # ANONYMOUS CONCERNS
+  ##############################
+
+  /concerns:
+    post:
+      tags: [Anonymous Concerns]
+      summary: Submit an anonymous concern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category: { type: string }
+                message: { type: string }
+      responses:
+        "201": { description: Concern submitted }
+
+  /concerns/student:
+    get:
+      tags: [Anonymous Concerns]
+      summary: View submitted concerns (Student)
+      responses:
+        "200": { description: List of student’s concerns }
+
+  /concerns/doctor:
+    get:
+      tags: [Anonymous Concerns]
+      summary: View assigned concerns (Doctor)
+      responses:
+        "200": { description: List of assigned concerns }
+
+  /concerns/{id}/reply:
+    post:
+      tags: [Anonymous Concerns]
+      summary: Doctor replies to a concern
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reply: { type: string }
+      responses:
+        "200": { description: Reply added successfully }
+
+  ##############################
+  # APPOINTMENTS
+  ##############################
+
+  /doctors:
+    get:
+      tags: [Appointments]
+      summary: List doctors and availability
+      responses:
+        "200": { description: List of doctors }
+
+  /appointments:
+    post:
+      tags: [Appointments]
+      summary: Book a new appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doctor_id: { type: integer }
+                date: { type: string, format: date }
+                time: { type: string }
+      responses:
+        "201": { description: Appointment booked }
+
+  /appointments/student:
+    get:
+      tags: [Appointments]
+      summary: View student’s appointments
+      responses:
+        "200": { description: Student’s appointment list }
+
+  /appointments/doctor:
+    get:
+      tags: [Appointments]
+      summary: View doctor’s appointments
+      responses:
+        "200": { description: Doctor’s appointment list }
+
+  /appointments/{id}:
+    put:
+      tags: [Appointments]
+      summary: Reschedule appointment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_date: { type: string, format: date }
+                new_time: { type: string }
+      responses:
+        "200": { description: Appointment rescheduled }
+    delete:
+      tags: [Appointments]
+      summary: Cancel appointment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Appointment cancelled }
+
+  ##############################
+  # HEALTH RECORDS & PRESCRIPTIONS
+  ##############################
+
+  /records/student:
+    get:
+      tags: [Health Records]
+      summary: Get student’s medical history
+      responses:
+        "200": { description: Health record list }
+
+  /records/doctor/{studentId}:
+    get:
+      tags: [Health Records]
+      summary: Doctor views a student’s records
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Student health record }
+
+  /records:
+    post:
+      tags: [Health Records]
+      summary: Doctor adds or updates health record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                student_id: { type: integer }
+                diagnosis: { type: string }
+                notes: { type: string }
+      responses:
+        "201": { description: Record saved }
+
+  /prescriptions/{id}:
+    get:
+      tags: [Health Records]
+      summary: Get prescription details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Prescription fetched }
+    put:
+      tags: [Health Records]
+      summary: Update prescription
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                medicines: { type: array, items: { type: string } }
+      responses:
+        "200": { description: Prescription updated }
+
+  ##############################
+  # REFERRALS
+  ##############################
+
+  /referrals/request:
+    post:
+      tags: [Referrals]
+      summary: Student requests hospital referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "201": { description: Referral request created }
+
+  /referrals/student:
+    get:
+      tags: [Referrals]
+      summary: Student views referral history
+      responses:
+        "200": { description: Referral list }
+
+  /referrals/doctor:
+    get:
+      tags: [Referrals]
+      summary: Doctor views pending referrals
+      responses:
+        "200": { description: Pending referral list }
+
+  /referrals/{id}/approve:
+    put:
+      tags: [Referrals]
+      summary: Doctor approves or denies referral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [approved, denied] }
+      responses:
+        "200": { description: Referral status updated }
+
+  ##############################
+  # PHARMACY
+  ##############################
+
+  /pharmacy/inventory:
+    get:
+      tags: [Pharmacy]
+      summary: View medicine inventory
+      responses:
+        "200": { description: List of medicines }
+
+  /pharmacy/inventory/{id}:
+    put:
+      tags: [Pharmacy]
+      summary: Update inventory item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity: { type: integer }
+      responses:
+        "200": { description: Inventory updated }
+
+  /pharmacy/orders:
+    post:
+      tags: [Pharmacy]
+      summary: Student places medicine order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                medicine_id: { type: integer }
+                quantity: { type: integer }
+      responses:
+        "201": { description: Order placed }
+    get:
+      tags: [Pharmacy]
+      summary: Staff views all orders
+      responses:
+        "200": { description: List of all orders }
+
+  /pharmacy/orders/student:
+    get:
+      tags: [Pharmacy]
+      summary: Student views own orders
+      responses:
+        "200": { description: Student’s order list }
+
+  /pharmacy/orders/{id}/status:
+    put:
+      tags: [Pharmacy]
+      summary: Update medicine order status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [pending, ready, collected] }
+      responses:
+        "200": { description: Order status updated }
+
+  ##############################
+  # ADMIN
+  ##############################
+
+  /admin/overview:
+    get:
+      tags: [Admin]
+      summary: Admin dashboard summary
+      responses:
+        "200": { description: System overview }
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: Manage all users
+      responses:
+        "200": { description: List of all users }
+
+  /admin/appointments:
+    get:
+      tags: [Admin]
+      summary: View all appointments
+      responses:
+        "200": { description: Appointment list }
+
+  /admin/inventory:
+    get:
+      tags: [Admin]
+      summary: Pharmacy inventory summary
+      responses:
+        "200": { description: Inventory summary }
+
+  ##############################
+  # NOTIFICATIONS
+  ##############################
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get user notifications
+      responses:
+        "200": { description: List of notifications }
+
+  /notifications/send:
+    post:
+      tags: [Notifications]
+      summary: Send a notification (Admin/System)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id: { type: integer }
+                message: { type: string }
+      responses:
+        "200": { description: Notification sent successfully }
+
+
+# ... Continue with all other endpoints
+# They will inherit global JWT security unless security: [] is explicitly set
