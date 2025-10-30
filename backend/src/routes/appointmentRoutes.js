@@ -9,12 +9,13 @@ const {
   cancelAppointment
 } = require('../controllers/appointmentController');
 
-// Routes
+const verifyToken = require('../middleware/auth');
+
 router.get('/doctors', getDoctors);
-router.post('/appointments', bookAppointment);
-router.get('/appointments/student', getStudentAppointments);
-router.get('/appointments/doctor', getDoctorAppointments);
-router.put('/appointments/:id', rescheduleAppointment);
-router.delete('/appointments/:id', cancelAppointment);
+router.post('/appointments', verifyToken, bookAppointment);
+router.get('/appointments/student', verifyToken, getStudentAppointments);
+router.get('/appointments/doctor', verifyToken, getDoctorAppointments);
+router.put('/appointments/:id', verifyToken, rescheduleAppointment);
+router.delete('/appointments/:id', verifyToken, cancelAppointment);
 
 module.exports = router;

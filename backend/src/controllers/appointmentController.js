@@ -13,11 +13,11 @@ exports.getDoctors = async (req, res) => {
   }
 };
 
-// Book a new appointment
 exports.bookAppointment = async (req, res) => {
-  const { student_id, student_name, doctor_id, doctor_name, date, time, reason } = req.body;
+  const { doctor_id, date, time } = req.body;
+  const student_id = req.user.id;
+
   try {
-    // Optional: check if doctor is available at the given date/time
     const conflict = await pool.query(
       "SELECT * FROM appointments WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status = 'scheduled';",
       [doctor_id, date, time]
@@ -25,10 +25,22 @@ exports.bookAppointment = async (req, res) => {
     if (conflict.rows.length > 0)
       return res.status(400).json({ success: false, message: 'Doctor not available at this slot' });
 
+    const doctorResult = await pool.query(
+      "SELECT name FROM users WHERE id = $1 AND role = 'doctor'",
+      [doctor_id]
+    );
+    if (doctorResult.rows.length === 0)
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const studentResult = await pool.query(
+      "SELECT name FROM users WHERE id = $1",
+      [student_id]
+    );
+
     const result = await pool.query(
-      `INSERT INTO appointments(student_id, student_name, doctor_id, doctor_name, date, time, status, reason)
-       VALUES ($1,$2,$3,$4,$5,$6,'scheduled',$7) RETURNING *;`,
-      [student_id, student_name, doctor_id, doctor_name, date, time, reason]
+      `INSERT INTO appointments(student_id, student_name, doctor_id, doctor_name, date, time, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'scheduled') RETURNING *;`,
+      [student_id, studentResult.rows[0].name, doctor_id, doctorResult.rows[0].name, date, time]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -40,7 +52,7 @@ exports.bookAppointment = async (req, res) => {
 
 // View student appointments
 exports.getStudentAppointments = async (req, res) => {
-  const studentId = req.query.student_id;
+  const studentId = req.user.id;
   try {
     const result = await pool.query(
       "SELECT * FROM appointments WHERE student_id = $1 ORDER BY date, time;",

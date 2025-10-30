@@ -109,3 +109,14 @@ exports.updateUserById = async (req, res) => {
   }
 };
 
+
+// exports.logout = async (req, res) => {
+  
+//   res.status(200).json({ success: true, message: "User logged out successfully" });
+// };
+
+exports.logout = (req, res) => {
+  res.clearCookie('refreshToken'); // remove refresh token
+  res.status(200).json({ success: true, message: "Logged out successfully" });
+};
+
