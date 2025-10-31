@@ -67,7 +67,14 @@ exports.getStudentAppointments = async (req, res) => {
 
 // View doctor appointments
 exports.getDoctorAppointments = async (req, res) => {
-  const doctorId = req.query.doctor_id;
+  // Prefer explicit query param (for admins) but fall back to authenticated user's id
+  let doctorId = req.query.doctor_id || (req.user && req.user.id);
+  console.log('Doctor ID from query or token:', doctorId);
+
+  if (!doctorId) {
+    return res.status(400).json({ success: false, message: 'Doctor id is required' });
+  }
+
   try {
     const result = await pool.query(
       "SELECT * FROM appointments WHERE doctor_id = $1 ORDER BY date, time;",
@@ -83,24 +90,69 @@ exports.getDoctorAppointments = async (req, res) => {
 // Reschedule appointment
 exports.rescheduleAppointment = async (req, res) => {
   const appointmentId = req.params.id;
-  const { date, time } = req.body;
-  try {
-    // Optional: check if doctor is available at the new slot
-    const conflict = await pool.query(
-      "SELECT * FROM appointments WHERE id != $1 AND doctor_id = (SELECT doctor_id FROM appointments WHERE id = $1) AND date = $2 AND time = $3 AND status = 'scheduled';",
-      [appointmentId, date, time]
-    );
-    if (conflict.rows.length > 0)
-      return res.status(400).json({ success: false, message: 'Doctor not available at this slot' });
+  // Support both formats (date, time) and (new_date, new_time)
+  const date = req.body.date || req.body.new_date;
+  const time = req.body.time || req.body.new_time;
 
+  // Validate required fields
+  if (!date || !time) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Both date and time are required for rescheduling. Use either {date, time} or {new_date, new_time} format.' 
+    });
+  }
+
+  try {
+    // First check if appointment exists and is in a valid state
+    const appointmentCheck = await pool.query(
+      "SELECT * FROM appointments WHERE id = $1",
+      [appointmentId]
+    );
+
+    if (appointmentCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found' 
+      });
+    }
+
+    if (appointmentCheck.rows[0].status !== 'scheduled') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Can only reschedule appointments that are currently scheduled' 
+      });
+    }
+
+    // Check if doctor is available at the new slot
+    const conflict = await pool.query(
+      "SELECT * FROM appointments WHERE id != $1 AND doctor_id = $2 AND date = $3 AND time = $4 AND status = 'scheduled';",
+      [appointmentId, appointmentCheck.rows[0].doctor_id, date, time]
+    );
+
+    if (conflict.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Doctor not available at this slot' 
+      });
+    }
+
+    // Update the appointment
     const result = await pool.query(
       "UPDATE appointments SET date = $1, time = $2 WHERE id = $3 RETURNING *;",
       [date, time, appointmentId]
     );
-    res.status(200).json({ success: true, data: result.rows[0] });
+
+    res.status(200).json({ 
+      success: true, 
+      data: result.rows[0] 
+    });
   } catch (err) {
     console.error('Error rescheduling appointment:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error',
+      details: err.message 
+    });
   }
 };
 

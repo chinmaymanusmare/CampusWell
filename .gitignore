@@ -58,9 +58,9 @@ build/Release/
 .yarn/*
 
 # dotenv environment variable files
-.env
-.env.*
-!.env.example
+# .env
+# .env.*
+# !.env.example
 
 # Parcel cache
 .cache/

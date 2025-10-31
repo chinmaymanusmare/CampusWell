@@ -5,6 +5,20 @@ const pool = require('../config/db');
 exports.signup = async (req, res) => {
   const { name, email, password, role, roll_no, specialization } = req.body;
 
+  // Validate password presence and basic strength:
+  // - minimum 8 characters
+  // - at least one letter
+  // - at least one digit
+  // Special characters are allowed.
+  if (!password) {
+    return res.status(400).json({ success: false, message: 'Password is required' });
+  }
+
+  const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+  if (!pwdRegex.test(password)) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long and include at least one letter and one number' });
+  }
+
   try {
     const existinguser = await pool.query("SELECT * FROM public.users WHERE email = $1;", [email]);
 

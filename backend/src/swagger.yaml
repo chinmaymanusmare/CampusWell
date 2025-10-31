@@ -20,7 +20,6 @@ tags:
   - name: Referrals
   - name: Pharmacy
   - name: Admin
-  - name: Notifications
 
 components:
   securitySchemes:
@@ -521,29 +520,4 @@ paths:
       responses:
         "200": { description: Inventory summary }
 
-  ##############################
-  # NOTIFICATIONS
-  ##############################
 
-  /notifications:
-    get:
-      tags: [Notifications]
-      summary: Get user notifications
-      responses:
-        "200": { description: List of notifications }
-
-  /notifications/send:
-    post:
-      tags: [Notifications]
-      summary: Send a notification (Admin/System)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                user_id: { type: integer }
-                message: { type: string }
-      responses:
-        "200": { description: Notification sent successfully }
