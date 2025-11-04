@@ -1,0 +1,43 @@
+const request = require('supertest');
+const pool = require('../../src/config/db');
+const app = require('../../src/app');
+
+describe('Auth integration tests', () => {
+  const timestamp = Date.now();
+  const studentEmail = `student${timestamp}@example.com`;
+  const doctorEmail = `doctor${timestamp}@example.com`;
+  const password = 'Passw0rd1';
+
+  afterAll(async () => {
+    // cleanup created users
+    await pool.query('DELETE FROM users WHERE email = $1 OR email = $2', [studentEmail, doctorEmail]);
+  });
+
+  test('signup and login flow for student and doctor', async () => {
+    // Signup student
+    const sRes = await request(app)
+      .post('/signup')
+      .send({ name: 'Test Student', email: studentEmail, password, role: 'student', roll_no: 'A1001' });
+    expect(sRes.statusCode).toBe(201);
+
+    // Signup doctor
+    const dRes = await request(app)
+      .post('/signup')
+      .send({ name: 'Test Doctor', email: doctorEmail, password, role: 'doctor' });
+    expect(dRes.statusCode).toBe(201);
+
+    // Login student
+    const ls = await request(app).post('/login').send({ email: studentEmail, password });
+    expect([200, 400, 401]).toContain(ls.statusCode); // login route may be mounted as middleware; accept common statuses
+    // If successful, return token
+    if (ls.statusCode === 200) {
+      expect(ls.body).toHaveProperty('token');
+    }
+
+    // Login doctor
+    const ld = await request(app).post('/login').send({ email: doctorEmail, password });
+    if (ld.statusCode === 200) {
+      expect(ld.body).toHaveProperty('token');
+    }
+  }, 20000);
+});

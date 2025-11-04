@@ -17,6 +17,40 @@ exports.bookAppointment = async (req, res) => {
   const { doctor_id, date, time } = req.body;
   const student_id = req.user.id;
 
+  // Validate required fields
+  if (!doctor_id || !date || !time) {
+    return res.status(400).json({
+      success: false,
+      message: 'doctor_id, date, and time are required'
+    });
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid date format. Use YYYY-MM-DD'
+    });
+  }
+
+  // Validate time format (HH:mm)
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (!timeRegex.test(time)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid time format. Use HH:mm (24-hour format)'
+    });
+  }
+
+  // Validate doctor_id is a positive number
+  if (!Number.isInteger(doctor_id) || doctor_id <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid doctor_id. Must be a positive integer'
+    });
+  }
+
   try {
     const conflict = await pool.query(
       "SELECT * FROM appointments WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status = 'scheduled';",

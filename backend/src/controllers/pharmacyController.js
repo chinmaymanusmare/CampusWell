@@ -53,7 +53,7 @@ exports.updateInventoryItem = async (req, res) => {
 // ===========================================
 exports.placeOrder = async (req, res) => {
   const studentId = req.user.id;
-  const { medicine_id, quantity } = req.body;
+  const { medicine_id, quantity, prescription_link } = req.body;
 
   try {
     // Get student name
@@ -72,11 +72,11 @@ exports.placeOrder = async (req, res) => {
 
     const total = medicine.price * quantity;
 
-    // Create order
+    // Create order (store prescription_link when provided)
     const orderResult = await pool.query(
-      `INSERT INTO orders (student_id, student_name, total)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [studentId, studentName, total]
+      `INSERT INTO orders (student_id, student_name, total, prescription_link)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [studentId, studentName, total, prescription_link || null]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -111,7 +111,7 @@ exports.placeOrder = async (req, res) => {
 exports.getAllOrders = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM orders ORDER BY ordered_at DESC`
+      `SELECT id, student_id, student_name, status, ordered_at, total, prescription_link FROM orders ORDER BY ordered_at DESC`
     );
 
     res.status(200).json({
@@ -133,7 +133,7 @@ exports.getStudentOrders = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM orders WHERE student_id = $1 ORDER BY ordered_at DESC`,
+      `SELECT id, student_id, student_name, status, ordered_at, total, prescription_link FROM orders WHERE student_id = $1 ORDER BY ordered_at DESC`,
       [studentId]
     );
 

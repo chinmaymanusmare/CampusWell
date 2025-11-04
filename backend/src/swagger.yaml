@@ -453,20 +453,70 @@ paths:
               properties:
                 medicine_id: { type: integer }
                 quantity: { type: integer }
+                prescription_link: { type: string, format: uri, description: 'Optional link to doctor prescription (URL) for pharmacist verification' }
       responses:
-        "201": { description: Order placed }
+        "201": 
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  order_id: { type: integer }
+                  prescription_link: { type: string }
     get:
       tags: [Pharmacy]
       summary: Staff views all orders
       responses:
-        "200": { description: List of all orders }
+        "200":
+          description: List of all orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  count: { type: integer }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        student_id: { type: integer }
+                        student_name: { type: string }
+                        status: { type: string }
+                        ordered_at: { type: string, format: date-time }
+                        total: { type: number }
+                        prescription_link: { type: string }
 
   /pharmacy/orders/student:
     get:
       tags: [Pharmacy]
       summary: Student views own orders
       responses:
-        "200": { description: Student’s order list }
+        "200":
+          description: Student’s order list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  count: { type: integer }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        student_id: { type: integer }
+                        student_name: { type: string }
+                        status: { type: string }
+                        ordered_at: { type: string, format: date-time }
+                        total: { type: number }
+                        prescription_link: { type: string }
 
   /pharmacy/orders/{id}/status:
     put:

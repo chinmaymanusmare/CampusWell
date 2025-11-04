@@ -9,8 +9,11 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-pool.connect()
-  .then(() => console.log('✅ PostgreSQL Connected Successfully'))
-  .catch((err) => console.error('❌ PostgreSQL Connection Error:', err));
+// During tests we don't want to attempt a real DB connection.
+if (process.env.NODE_ENV !== 'test') {
+  pool.connect()
+    .then(() => console.log('✅ PostgreSQL Connected Successfully'))
+    .catch((err) => console.error('❌ PostgreSQL Connection Error:', err));
+}
 
 module.exports = pool;
