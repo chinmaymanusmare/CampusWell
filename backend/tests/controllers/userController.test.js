@@ -257,4 +257,44 @@ describe('User Controller', () => {
       });
     });
   });
+
+  describe('updateDoctorTimePerPatient', () => {
+    const { updateDoctorTimePerPatient } = require('../../src/controllers/userController');
+
+    beforeEach(() => {
+      req.user = { id: 10 };
+      req.body = {};
+    });
+
+    test('returns 400 when timePerPatient is missing', async () => {
+      req.body = {};
+      await updateDoctorTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'timePerPatient is required' });
+    });
+
+    test('returns 400 when timePerPatient is invalid', async () => {
+      req.body = { timePerPatient: 'abc' };
+      await updateDoctorTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'timePerPatient must be greater than 0' });
+    });
+
+    test('returns 404 when doctor not found', async () => {
+      req.body = { timePerPatient: 15 };
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      await updateDoctorTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not found' });
+    });
+
+    test('successfully updates time per patient', async () => {
+      req.body = { timePerPatient: 20 };
+      const mockResult = { rows: [{ id: 10, name: 'Dr Test', email: 'd@test.com', role: 'doctor', time_per_patient: 20 }] };
+      pool.query.mockResolvedValueOnce(mockResult);
+      await updateDoctorTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockResult.rows[0] });
+    });
+  });
 });

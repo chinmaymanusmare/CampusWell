@@ -6,7 +6,7 @@
   "scripts": {
   "test": "jest --coverage",
   "test:watch": "jest --watch",
-  "test:integration": "cross-env NODE_ENV=test jest --runInBand --roots backend/integration",
+  "test:integration": "cross-env NODE_ENV=test jest --runInBand --forceExit --roots backend/integration",
   "start": "node backend/src/server.js"
   },
   "keywords": [],

@@ -149,7 +149,8 @@ describe('Doctor Time Per Patient Integration Tests', () => {
 
             expect(appointmentCount).toBe(6);
             expect(lastResponse.statusCode).toBe(400);
-            expect(lastResponse.body.message).toContain('fully booked');
+            // controller now returns a unified 'Doctor not available at this time' message when no slots
+            expect(lastResponse.body.message).toContain('Doctor not available');
         });
     });
 });

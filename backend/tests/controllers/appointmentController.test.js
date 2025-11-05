@@ -46,9 +46,10 @@ describe('Appointment Controller', () => {
       const mockStudent = { rows: [{ name: 'John Doe' }] };
       const mockAppointment = { rows: [{ id: 1, student_id: 1, doctor_id: 2 }] };
 
-      pool.query.mockResolvedValueOnce(mockConflict)
-        .mockResolvedValueOnce(mockDoctor)
+      // New call order: doctor lookup, student lookup, availability check, insert appointment
+      pool.query.mockResolvedValueOnce(mockDoctor)
         .mockResolvedValueOnce(mockStudent)
+        .mockResolvedValueOnce({ rows: [{ current_bookings: '0', max_patients: 4, start_time: '09:00', end_time: '10:00', time_per_patient: 15 }] })
         .mockResolvedValueOnce(mockAppointment);
 
       await bookAppointment(mockReq, mockRes);
@@ -59,7 +60,15 @@ describe('Appointment Controller', () => {
 
     test('should reject when slot is not available', async () => {
       mockReq.body = { doctor_id: 2, date: '2025-12-01', time: '10:00' };
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+      // doctor exists
+      const mockDoctor = { rows: [{ name: 'Dr. Smith' }] };
+      const mockStudent = { rows: [{ name: 'John Doe' }] };
+      // availability shows fully booked (current_bookings >= max_patients)
+      const mockAvailability = { rows: [{ current_bookings: '4', max_patients: 4, start_time: '09:00', end_time: '10:00', time_per_patient: 15 }] };
+
+      pool.query.mockResolvedValueOnce(mockDoctor)
+        .mockResolvedValueOnce(mockStudent)
+        .mockResolvedValueOnce(mockAvailability);
 
       await bookAppointment(mockReq, mockRes);
 
@@ -69,8 +78,8 @@ describe('Appointment Controller', () => {
 
     test('should handle non-existent doctor', async () => {
       mockReq.body = { doctor_id: 999, date: '2025-12-01', time: '10:00' };
-      pool.query.mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+      // doctor lookup returns empty -> should produce 404 immediately
+      pool.query.mockResolvedValueOnce({ rows: [] });
 
       await bookAppointment(mockReq, mockRes);
 

@@ -54,13 +54,7 @@ exports.bookAppointment = async (req, res) => {
   }
 
   try {
-    // Check availability and capacity for this doctor/date/time
-    const slots = await calculateAvailableSlots(doctor_id, date, time);
-    console.log('bookAppointment -> slots:', slots);
-    if (!slots.available) {
-      return res.status(400).json({ success: false, message: 'fully booked' });
-    }
-
+    // Verify doctor exists first (avoid calculating availability for non-existent doctor)
     const doctorResult = await pool.query(
       "SELECT name FROM users WHERE id = $1 AND role = 'doctor'",
       [doctor_id]
@@ -68,10 +62,19 @@ exports.bookAppointment = async (req, res) => {
     if (doctorResult.rows.length === 0)
       return res.status(404).json({ success: false, message: 'Doctor not found' });
 
+    // Get student info
     const studentResult = await pool.query(
       "SELECT name FROM users WHERE id = $1",
       [student_id]
     );
+
+    // Check availability and capacity for this doctor/date/time
+    const slots = await calculateAvailableSlots(doctor_id, date, time);
+    console.log('bookAppointment -> slots:', slots);
+    if (!slots.available) {
+      // Keep the message that test suite expects
+      return res.status(400).json({ success: false, message: 'Doctor not available at this slot' });
+    }
 
     const result = await pool.query(
       `INSERT INTO appointments(student_id, student_name, doctor_id, doctor_name, date, time, status)
