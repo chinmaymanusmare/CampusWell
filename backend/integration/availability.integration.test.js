@@ -101,8 +101,14 @@ describe('Doctor Availability Integration Tests', () => {
             const endDate = new Date();
             endDate.setDate(endDate.getDate() + 7);
 
+            // First get the doctor's ID from the availabilityId
+            const doctorId = (await pool.query(
+                'SELECT doctor_id FROM doctor_availability WHERE id = $1',
+                [availabilityId]
+            )).rows[0].doctor_id;
+
             const res = await request(app)
-                .get('/availability/' + availabilityId)
+                .get(`/availability/${doctorId}`)
                 .set('Authorization', `Bearer ${studentToken}`)
                 .query({
                     startDate: startDate.toISOString().split('T')[0],

@@ -12,7 +12,8 @@ const {
 router.post('/', auth, authorize('doctor'), setAvailability);
 
 // Get availability (for doctors and students)
-router.get('/:doctorId?', auth, getAvailability);
+router.get('/', auth, getAvailability); // Get all availabilities
+router.get('/:doctorId', auth, getAvailability); // Get availability for specific doctor
 
 // Delete availability (doctors only)
 router.delete('/:id', auth, authorize('doctor'), deleteAvailability);

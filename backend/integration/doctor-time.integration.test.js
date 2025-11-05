@@ -94,6 +94,30 @@ describe('Doctor Time Per Patient Integration Tests', () => {
                     timePerPatient: 30
                 });
 
+            // Get doctor ID from the database
+            const doctorResult = await pool.query(
+                'SELECT id FROM users WHERE email = $1',
+                [doctorEmail]
+            );
+            const doctorId = doctorResult.rows[0].id;
+
+            // Create a test student to book appointments
+            const studentEmail = `student${timestamp}@example.com`;
+            await request(app)
+                .post('/signup')
+                .send({
+                    name: 'Test Student',
+                    email: studentEmail,
+                    password,
+                    role: 'student',
+                    roll_no: 'TEST123'
+                });
+
+            const studentLogin = await request(app)
+                .post('/login')
+                .send({ email: studentEmail, password });
+            const studentToken = studentLogin.body.token;
+
             // Try to book appointments
             let appointmentCount = 0;
             let lastResponse;
@@ -102,9 +126,9 @@ describe('Doctor Time Per Patient Integration Tests', () => {
             while (appointmentCount < 7) {
                 lastResponse = await request(app)
                     .post('/appointments')
-                    .set('Authorization', `Bearer ${doctorToken}`)
+                    .set('Authorization', `Bearer ${studentToken}`)
                     .send({
-                        doctor_id: 1,
+                        doctor_id: doctorId,
                         date,
                         time: '09:00'
                     });
@@ -112,6 +136,9 @@ describe('Doctor Time Per Patient Integration Tests', () => {
                 if (lastResponse.statusCode !== 201) break;
                 appointmentCount++;
             }
+
+            // Clean up test student
+            await pool.query('DELETE FROM users WHERE email = $1', [studentEmail]);
 
             expect(appointmentCount).toBe(6);
             expect(lastResponse.statusCode).toBe(400);
