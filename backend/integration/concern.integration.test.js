@@ -18,6 +18,12 @@ describe('Concerns integration tests', () => {
       roll_no: 'R100' 
     });
 
+    // create a doctor to reply to concerns
+    const doctorEmail = `int_doctor_${timestamp}@example.com`;
+    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor' });
+    const d = await pool.query('SELECT id FROM users WHERE email = $1', [doctorEmail]);
+    doctorId = d.rows[0].id;
+
     const s = await pool.query('SELECT id FROM users WHERE email = $1', [studentEmail]);
     studentId = s.rows[0].id;
   });
@@ -54,16 +60,16 @@ describe('Concerns integration tests', () => {
     expect(viewRes.statusCode).toBe(200);
     expect(Array.isArray(viewRes.body.data)).toBeTruthy();
 
-    // update concern
-    const updateRes = await request(app)
-      .put(`/concerns/${concernId}`)
-      .set('Authorization', `Bearer ${studentToken}`)
-      .send({ 
-        title: 'Updated Test Concern',
-        description: 'Updated integration test concern',
-        type: 'medical'
-      });
+    // doctor replies to concern
+    const doctorLogin = await request(app).post('/login').send({ email: `int_doctor_${timestamp}@example.com`, password: pwd });
+    const doctorToken = doctorLogin.body && doctorLogin.body.token;
+    expect(doctorLogin.statusCode).toBe(200);
 
-    expect(updateRes.statusCode).toBe(200);
+    const replyRes = await request(app)
+      .post(`/concerns/${concernId}/reply`)
+      .set('Authorization', `Bearer ${doctorToken}`)
+      .send({ reply: 'This is a reply from doctor' });
+
+    expect(replyRes.statusCode).toBe(200);
   }, 30000);
 });
