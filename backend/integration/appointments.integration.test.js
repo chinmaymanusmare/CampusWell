@@ -1,6 +1,6 @@
 const request = require('supertest');
-const pool = require('../../src/config/db');
-const app = require('../../src/app');
+const pool = require('../src/config/db');
+const app = require('../src/app');
 const jwt = require('jsonwebtoken');
 
 describe('Appointments integration tests', () => {

@@ -87,6 +87,7 @@ CREATE TABLE orders (
     status VARCHAR(50) CHECK (status IN ('pending', 'ready', 'collected')) DEFAULT 'pending',
     ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total INT DEFAULT 0 CHECK (total >= 0)
+    ,prescription_link TEXT
 );
 
 -- =========================================
