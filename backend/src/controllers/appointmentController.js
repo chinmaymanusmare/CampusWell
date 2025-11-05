@@ -103,7 +103,7 @@ exports.getStudentAppointments = async (req, res) => {
 exports.getDoctorAppointments = async (req, res) => {
   // Prefer explicit query param (for admins) but fall back to authenticated user's id
   let doctorId = req.query.doctor_id || (req.user && req.user.id);
-  console.log('Doctor ID from query or token:', doctorId);
+  // console.log('Doctor ID from query or token:', doctorId);
 
   if (!doctorId) {
     return res.status(400).json({ success: false, message: 'Doctor id is required' });

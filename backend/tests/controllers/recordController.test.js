@@ -35,4 +35,38 @@ describe('recordController', () => {
     await recordController.getPrescriptionById(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
+
+  test('getPrescriptionById returns 200 when found', async () => {
+    req.params.id = '1';
+    pool.query.mockResolvedValue({ rows: [{ id: 1, student_id: 2 }] });
+    await recordController.getPrescriptionById(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  test('getStudentRecordForDoctor returns data', async () => {
+    req.params.studentId = '5';
+    pool.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 1 }, { id: 2 }] });
+    await recordController.getStudentRecordForDoctor(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  test('updatePrescription returns 200 when updated', async () => {
+    req.params.id = '10';
+    req.body = { medicines: 'A', diagnosis: 'B', notes: 'C' };
+    pool.query.mockResolvedValue({ rows: [{ id: 10 }] });
+    await recordController.updatePrescription(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  test('updatePrescription returns 404 when not found', async () => {
+    req.params.id = '10';
+    req.body = { medicines: 'A', diagnosis: 'B', notes: 'C' };
+    pool.query.mockResolvedValue({ rows: [] });
+    await recordController.updatePrescription(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+  });
 });

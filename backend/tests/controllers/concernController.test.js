@@ -17,12 +17,14 @@ describe('concernController', () => {
     pool.query.mockResolvedValueOnce({ rows: [{ id: 1, category: 'mental' }] });
     await concernController.submitConcern(req, res);
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 1, category: 'mental' } });
   });
 
   test('getConcernsForStudent returns data', async () => {
     pool.query.mockResolvedValue({ rowCount: 1, rows: [{ id: 1 }] });
     await concernController.getConcernsForStudent(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, count: 1, data: [{ id: 1 }] });
   });
 
   test('replyToConcern updates when exists', async () => {
@@ -34,5 +36,22 @@ describe('concernController', () => {
 
     await concernController.replyToConcern(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Reply added successfully', data: { id: 2, response: 'response' } });
+  });
+
+  test('replyToConcern returns 404 if concern not found', async () => {
+    req.params.id = '99';
+    req.body = { reply: 'response' };
+    pool.query.mockResolvedValueOnce({ rows: [] }); // check exists
+    await concernController.replyToConcern(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Concern not found' });
+  });
+
+  test('getConcernsForDoctor returns data', async () => {
+    pool.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 1 }, { id: 2 }] });
+    await concernController.getConcernsForDoctor(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, count: 2, data: [{ id: 1 }, { id: 2 }] });
   });
 });
