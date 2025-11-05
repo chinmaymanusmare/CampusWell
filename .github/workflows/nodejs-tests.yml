@@ -34,7 +34,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: admin123
           POSTGRES_DB: campuswell_test
         ports:
           - 5432:5432
@@ -60,14 +60,15 @@ jobs:
           done
       - name: Load database schema
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d campuswell_test -f pgadmin/"create table.sql"
+          PGPASSWORD=admin123 psql -h localhost -U postgres -d campuswell_test -f pgadmin/"create table.sql"
       - name: Install dependencies
         run: npm ci
       - name: Run integration tests
         run: npm run test:integration
         env:
           DB_USER: postgres
-          DB_PASS: postgres
+          DB_PASS: admin123
+          DB_PASSWORD: admin123
           DB_HOST: localhost
           DB_NAME: campuswell_test
           DB_PORT: 5432
