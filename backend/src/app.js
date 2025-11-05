@@ -24,6 +24,9 @@ app.post('/logout', logout);
 const appointmentRoutes = require('./routes/appointmentRoutes');
 app.use('/', appointmentRoutes);
 
+const availabilityRoutes = require('./routes/availabilityRoutes');
+app.use('/availability', availabilityRoutes);
+
 const concernRoutes = require('./routes/concernRoutes');
 app.use('/concerns', concernRoutes);
 

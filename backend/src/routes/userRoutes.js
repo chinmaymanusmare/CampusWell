@@ -38,5 +38,7 @@ const { authorize, authorizeUserOrAdmin } = require('../middleware/authorize');
 router.get('/', verifyToken, authorize('admin'), getAllUsersForAdmin);
 router.get('/:id', verifyToken, authorizeUserOrAdmin, getUserById);
 router.put('/:id', verifyToken, authorizeUserOrAdmin, updateUserById);
+// Route for doctor to update their time per patient
+router.put('/doctor/time-per-patient', verifyToken, authorize('doctor'), require('../controllers/userController').updateDoctorTimePerPatient);
 
 module.exports = router;

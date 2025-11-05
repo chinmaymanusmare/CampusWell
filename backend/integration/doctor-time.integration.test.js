@@ -86,6 +86,13 @@ describe('Doctor Time Per Patient Integration Tests', () => {
                     maxPatients: null // Let it calculate based on time_per_patient
                 });
 
+            // ensure availability created
+            const availCheck = await pool.query('SELECT * FROM doctor_availability WHERE doctor_id = $1 AND date = $2', [
+                (await pool.query('SELECT id FROM users WHERE email = $1', [doctorEmail])).rows[0].id,
+                date
+            ]);
+            expect(availCheck.rows.length).toBeGreaterThan(0);
+
             // Update time per patient to 30 minutes
             await request(app)
                 .put('/users/doctor/time-per-patient')

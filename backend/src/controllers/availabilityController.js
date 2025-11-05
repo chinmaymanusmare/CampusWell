@@ -95,6 +95,7 @@ const calculateAvailableSlots = async (doctorId, date, time) => {
 		);
 
 		if (availabilityResult.rows.length === 0) {
+			// no availability rows for this doctor/date/time
 			return {
 				available: false,
 				message: 'Doctor is not available at this time'
@@ -102,19 +103,25 @@ const calculateAvailableSlots = async (doctorId, date, time) => {
 		}
 
 		const availability = availabilityResult.rows[0];
-		const currentBookings = parseInt(availability.current_bookings);
+		const currentBookings = parseInt(availability.current_bookings || '0');
+		const timePerPatient = availability.time_per_patient;
 		const maxPatients = availability.max_patients || 
 			Math.floor(
 				(new Date(`2000-01-01 ${availability.end_time}`) - 
 				 new Date(`2000-01-01 ${availability.start_time}`)) / 
-				(availability.time_per_patient * 60000)
+				(timePerPatient * 60000)
 			);
+
+		// debug logs for integration test troubleshooting
+		console.log('calculateAvailableSlots -> availability rows:', availabilityResult.rows.length);
+		console.log('calculateAvailableSlots -> availability:', availability);
+		console.log('calculateAvailableSlots -> currentBookings:', currentBookings, 'maxPatients:', maxPatients, 'timePerPatient:', timePerPatient);
 
 		return {
 			available: currentBookings < maxPatients,
 			maxPatients,
 			currentBookings,
-			timePerPatient: availability.time_per_patient
+			timePerPatient: timePerPatient
 		};
 	} catch (error) {
 		console.error('Error calculating available slots:', error);

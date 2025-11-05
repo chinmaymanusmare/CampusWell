@@ -13,6 +13,8 @@ exports.getDoctors = async (req, res) => {
   }
 };
 
+const { calculateAvailableSlots } = require('./availabilityController');
+
 exports.bookAppointment = async (req, res) => {
   const { doctor_id, date, time } = req.body;
   const student_id = req.user.id;
@@ -52,12 +54,12 @@ exports.bookAppointment = async (req, res) => {
   }
 
   try {
-    const conflict = await pool.query(
-      "SELECT * FROM appointments WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status = 'scheduled';",
-      [doctor_id, date, time]
-    );
-    if (conflict.rows.length > 0)
-      return res.status(400).json({ success: false, message: 'Doctor not available at this slot' });
+    // Check availability and capacity for this doctor/date/time
+    const slots = await calculateAvailableSlots(doctor_id, date, time);
+    console.log('bookAppointment -> slots:', slots);
+    if (!slots.available) {
+      return res.status(400).json({ success: false, message: 'fully booked' });
+    }
 
     const doctorResult = await pool.query(
       "SELECT name FROM users WHERE id = $1 AND role = 'doctor'",

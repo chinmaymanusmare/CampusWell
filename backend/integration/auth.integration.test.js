@@ -20,10 +20,10 @@ describe('Auth integration tests', () => {
       .send({ name: 'Test Student', email: studentEmail, password, role: 'student', roll_no: 'A1001' });
     expect(sRes.statusCode).toBe(201);
 
-    // Signup doctor
+    // Signup doctor (include timePerPatient to satisfy DB constraint)
     const dRes = await request(app)
       .post('/signup')
-      .send({ name: 'Test Doctor', email: doctorEmail, password, role: 'doctor' });
+      .send({ name: 'Test Doctor', email: doctorEmail, password, role: 'doctor', timePerPatient: 15 });
     expect(dRes.statusCode).toBe(201);
 
     // Login student

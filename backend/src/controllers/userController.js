@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
 exports.signup = async (req, res) => {
-  const { name, email, password, role, roll_no, specialization } = req.body;
+  const { name, email, password, role, roll_no, specialization, timePerPatient } = req.body;
 
   // Validate password presence and basic strength:
   // - minimum 8 characters
@@ -28,7 +28,10 @@ exports.signup = async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const result = await pool.query("INSERT INTO public.users( name, email, password, role, roll_number, specialization)	VALUES ( $1, $2, $3, $4, $5,$6);", [name, email, hashedPassword, role, roll_no, specialization]);
+    const result = await pool.query(
+      "INSERT INTO public.users( name, email, password, role, roll_number, specialization, time_per_patient) VALUES ( $1, $2, $3, $4, $5, $6, $7) RETURNING *;",
+      [name, email, hashedPassword, role, roll_no, specialization, timePerPatient]
+    );
 
     res.status(201).json({ success: true, user: result.rows[0] });
   } catch (err) {
@@ -119,6 +122,37 @@ exports.updateUserById = async (req, res) => {
     res.status(200).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('Error updating user:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Update doctor's time per patient (for authenticated doctor)
+exports.updateDoctorTimePerPatient = async (req, res) => {
+  const doctorId = req.user && req.user.id;
+  const { timePerPatient } = req.body;
+
+  if (timePerPatient === undefined || timePerPatient === null) {
+    return res.status(400).json({ success: false, message: 'timePerPatient is required' });
+  }
+
+  const value = Number(timePerPatient);
+  if (!Number.isInteger(value) || value <= 0) {
+    return res.status(400).json({ success: false, message: 'timePerPatient must be greater than 0' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE public.users SET time_per_patient = $1 WHERE id = $2 RETURNING id, name, email, role, time_per_patient as time_per_patient`,
+      [value, doctorId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.status(200).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating time per patient:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

@@ -9,11 +9,25 @@ describe('Appointments integration tests', () => {
   const timestamp = Date.now();
   const studentEmail = `int_student_${timestamp}@example.com`;
   const doctorEmail = `int_doctor_${timestamp}@example.com`;
+  // use a consistent booking date for availability and appointment
+  const bookingDateObj = new Date();
+  bookingDateObj.setDate(bookingDateObj.getDate() + 1);
+  const bookingDate = bookingDateObj.toISOString().split('T')[0];
 
   beforeAll(async () => {
     // create users via signup endpoints (exercise full stack)
     await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
-    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor' });
+    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
+
+    // login doctor and set availability so appointments can be booked
+    const dLogin = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
+    const doctorToken = dLogin.body && dLogin.body.token;
+    if (doctorToken) {
+      await request(app)
+        .post('/availability')
+        .set('Authorization', `Bearer ${doctorToken}`)
+        .send({ date: bookingDate, startTime: '09:00', endTime: '17:00', maxPatients: 12 });
+    }
 
     const s = await pool.query('SELECT id FROM users WHERE email = $1', [studentEmail]);
     studentId = s.rows[0].id;
@@ -37,7 +51,7 @@ describe('Appointments integration tests', () => {
     const bookRes = await request(app)
       .post('/appointments')
       .set('Authorization', `Bearer ${studentToken}`)
-      .send({ doctor_id: doctorId, date: '2025-12-01', time: '10:00' });
+      .send({ doctor_id: doctorId, date: bookingDate, time: '10:00' });
 
     expect(bookRes.statusCode).toBe(201);
     appointmentId = bookRes.body.data && bookRes.body.data.id;
