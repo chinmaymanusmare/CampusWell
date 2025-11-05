@@ -9,7 +9,7 @@ CREATE TABLE users (
     role VARCHAR(50) CHECK (role IN ('student', 'doctor', 'admin', 'pharmacy')) NOT NULL,
     roll_number VARCHAR(50),
     specialization VARCHAR(255),
-    time_per_patient INTEGER DEFAULT 15;
+    time_per_patient INTEGER DEFAULT 15
 );
 
 -- =========================================
