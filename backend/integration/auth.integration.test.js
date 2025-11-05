@@ -23,7 +23,7 @@ describe('Auth integration tests', () => {
     // Signup doctor
     const dRes = await request(app)
       .post('/signup')
-      .send({ name: 'Test Doctor', email: doctorEmail, password, role: 'doctor', timePerPatient: 15 });
+      .send({ name: 'Test Doctor', email: doctorEmail, password, role: 'doctor' });
     expect(dRes.statusCode).toBe(201);
 
     // Login student

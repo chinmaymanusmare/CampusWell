@@ -52,25 +52,19 @@ exports.bookAppointment = async (req, res) => {
   }
 
   try {
-    // First check if doctor exists
-    const doctorCheck = await pool.query(
+    const conflict = await pool.query(
+      "SELECT * FROM appointments WHERE doctor_id = $1 AND date = $2 AND time = $3 AND status = 'scheduled';",
+      [doctor_id, date, time]
+    );
+    if (conflict.rows.length > 0)
+      return res.status(400).json({ success: false, message: 'Doctor not available at this slot' });
+
+    const doctorResult = await pool.query(
       "SELECT name FROM users WHERE id = $1 AND role = 'doctor'",
       [doctor_id]
     );
-    if (doctorCheck.rows.length === 0) {
+    if (doctorResult.rows.length === 0)
       return res.status(404).json({ success: false, message: 'Doctor not found' });
-    }
-
-    // Check doctor's availability using the new system
-    const { calculateAvailableSlots } = require('./availabilityController');
-    const availability = await calculateAvailableSlots(doctor_id, date, time);
-    
-    if (!availability.available) {
-      return res.status(400).json({ 
-        success: false, 
-        message: availability.message || 'This slot is fully booked or doctor is not available' 
-      });
-    }
 
     const studentResult = await pool.query(
       "SELECT name FROM users WHERE id = $1",
@@ -80,7 +74,7 @@ exports.bookAppointment = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO appointments(student_id, student_name, doctor_id, doctor_name, date, time, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'scheduled') RETURNING *;`,
-      [student_id, studentResult.rows[0].name, doctor_id, doctorCheck.rows[0].name, date, time]
+      [student_id, studentResult.rows[0].name, doctor_id, doctorResult.rows[0].name, date, time]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -105,9 +99,11 @@ exports.getStudentAppointments = async (req, res) => {
   }
 };
 
+// View doctor appointments
 exports.getDoctorAppointments = async (req, res) => {
   // Prefer explicit query param (for admins) but fall back to authenticated user's id
   let doctorId = req.query.doctor_id || (req.user && req.user.id);
+  // console.log('Doctor ID from query or token:', doctorId);
 
   if (!doctorId) {
     return res.status(400).json({ success: false, message: 'Doctor id is required' });

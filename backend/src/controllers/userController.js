@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
 exports.signup = async (req, res) => {
-  const { name, email, password, role, roll_no, specialization, timePerPatient } = req.body;
+  const { name, email, password, role, roll_no, specialization } = req.body;
 
   // Validate password presence and basic strength:
   // - minimum 8 characters
@@ -12,16 +12,6 @@ exports.signup = async (req, res) => {
   // Special characters are allowed.
   if (!password) {
     return res.status(400).json({ success: false, message: 'Password is required' });
-  }
-
-  // Validate timePerPatient for doctors
-  if (role === 'doctor') {
-    if (!timePerPatient || timePerPatient < 1) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Time per patient is required for doctors and must be greater than 0' 
-      });
-    }
   }
 
   const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -38,10 +28,7 @@ exports.signup = async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const result = await pool.query(
-      "INSERT INTO public.users(name, email, password, role, roll_number, specialization, time_per_patient) VALUES ($1, $2, $3, $4, $5, $6, $7);",
-      [name, email, hashedPassword, role, roll_no, specialization, role === 'doctor' ? timePerPatient : null]
-    );
+    const result = await pool.query("INSERT INTO public.users( name, email, password, role, roll_number, specialization)	VALUES ( $1, $2, $3, $4, $5,$6);", [name, email, hashedPassword, role, roll_no, specialization]);
 
     res.status(201).json({ success: true, user: result.rows[0] });
   } catch (err) {
@@ -116,22 +103,14 @@ exports.getAllUsersForAdmin = async (req, res) => {
 
 exports.updateUserById = async (req, res) => {
   const userId = req.params.id;
-  const { name, email, role, roll_no, specialization, timePerPatient } = req.body;
-
-  // Validate timePerPatient for doctors
-  if (role === 'doctor' && (!timePerPatient || timePerPatient < 1)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Time per patient is required for doctors and must be greater than 0' 
-    });
-  }
+  const { name, email, role, roll_no, specialization } = req.body;
   try {
     const result = await pool.query(
       `UPDATE public.users 
-       SET name = $1, email = $2, role = $3, roll_number = $4, specialization = $5, time_per_patient = $6
-       WHERE id = $7
-       RETURNING id, name, email, role, roll_number, specialization, time_per_patient`,
-      [name, email, role, roll_no, specialization, role === 'doctor' ? timePerPatient : null, userId]
+       SET name = $1, email = $2, role = $3, roll_number = $4, specialization = $5
+       WHERE id = $6
+       RETURNING id, name, email, role, roll_number, specialization`,
+      [name, email, role, roll_no, specialization, userId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -153,75 +132,5 @@ exports.updateUserById = async (req, res) => {
 exports.logout = (req, res) => {
   res.clearCookie('refreshToken'); // remove refresh token
   res.status(200).json({ success: true, message: "Logged out successfully" });
-};
-
-exports.updateTimePerPatient = async (req, res) => {
-  try {
-    const doctorId = req.user.id;
-    const { timePerPatient } = req.body;
-
-    // Validate input
-    if (!timePerPatient || timePerPatient < 1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Time per patient must be greater than 0'
-      });
-    }
-
-    // Verify user is a doctor
-    const doctorCheck = await pool.query(
-      "SELECT role FROM users WHERE id = $1",
-      [doctorId]
-    );
-
-    if (doctorCheck.rows.length === 0 || doctorCheck.rows[0].role !== 'doctor') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only doctors can update time per patient'
-      });
-    }
-
-    // Update the time_per_patient
-    const result = await pool.query(
-      `UPDATE users 
-       SET time_per_patient = $1
-       WHERE id = $2 AND role = 'doctor'
-       RETURNING id, name, time_per_patient`,
-      [timePerPatient, doctorId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Doctor not found'
-      });
-    }
-
-    // Check if this affects any existing availability slots
-    const availabilityCheck = await pool.query(
-      `SELECT COUNT(*) 
-       FROM doctor_availability da 
-       WHERE da.doctor_id = $1 
-       AND da.date >= CURRENT_DATE`,
-      [doctorId]
-    );
-
-    let message = 'Time per patient updated successfully';
-    if (parseInt(availabilityCheck.rows[0].count) > 0) {
-      message += '. Note: This change will affect your existing availability slots.';
-    }
-
-    res.status(200).json({
-      success: true,
-      message,
-      data: result.rows[0]
-    });
-  } catch (err) {
-    console.error('Error updating time per patient:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
 };
 

@@ -12,8 +12,8 @@ describe('Appointments integration tests', () => {
 
   beforeAll(async () => {
     // create users via signup endpoints (exercise full stack)
-  await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
-  await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
+    await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
+    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor' });
 
     const s = await pool.query('SELECT id FROM users WHERE email = $1', [studentEmail]);
     studentId = s.rows[0].id;
@@ -28,23 +28,6 @@ describe('Appointments integration tests', () => {
   });
 
   test('student can book, view and doctor can view then reschedule appointment', async () => {
-    // login doctor
-    const ld = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
-    const doctorToken = ld.body && ld.body.token;
-    expect(ld.statusCode).toBe(200);
-
-    // set doctor availability
-    const availRes = await request(app)
-      .post('/availability')
-      .set('Authorization', `Bearer ${doctorToken}`)
-      .send({
-        date: '2025-12-01',
-        startTime: '09:00',
-        endTime: '17:00',
-        maxPatients: 12
-      });
-    expect(availRes.statusCode).toBe(201);
-
     // login student
     const lres = await request(app).post('/login').send({ email: studentEmail, password: pwd });
     const studentToken = lres.body && lres.body.token;
@@ -62,6 +45,11 @@ describe('Appointments integration tests', () => {
     // student views appointments
     const studView = await request(app).get('/appointments/student').set('Authorization', `Bearer ${studentToken}`);
     expect(studView.statusCode).toBe(200);
+
+    // login doctor
+    const ld = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
+    const doctorToken = ld.body && ld.body.token;
+    expect(ld.statusCode).toBe(200);
 
     // doctor views their appointments
     const docView = await request(app).get('/appointments/doctor').set('Authorization', `Bearer ${doctorToken}`);
