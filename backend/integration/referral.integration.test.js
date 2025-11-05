@@ -48,47 +48,39 @@ describe('Referrals integration tests', () => {
     await pool.query('DELETE FROM users WHERE email IN ($1, $2, $3)', [studentEmail, doctorEmail, specialistEmail]);
   });
 
-  test('doctor can create referrals and update their status', async () => {
-    // login doctor
-    const doctorLogin = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
-    const doctorToken = doctorLogin.body && doctorLogin.body.token;
-    expect(doctorLogin.statusCode).toBe(200);
+  test('student can request a referral and doctor can update its status', async () => {
+    // login student (creator)
+    const studentLogin = await request(app).post('/login').send({ email: studentEmail, password: pwd });
+    const studentToken = studentLogin.body && studentLogin.body.token;
+    expect(studentLogin.statusCode).toBe(200);
 
-    // create referral (route is /referrals/request)
+    // student creates referral request
     const createRes = await request(app)
       .post('/referrals/request')
-      .set('Authorization', `Bearer ${doctorToken}`)
+      .set('Authorization', `Bearer ${studentToken}`)
       .send({
-        student_id: studentId,
-        specialist_id: specialistId,
-        reason: 'Test Referral',
-        notes: 'Integration test referral'
+        reason: 'Test Referral - integration'
       });
 
     expect(createRes.statusCode).toBe(201);
     referralId = createRes.body.data && createRes.body.data.id;
 
-    // login specialist
-    const specialistLogin = await request(app).post('/login').send({ email: specialistEmail, password: pwd });
-    const specialistToken = specialistLogin.body && specialistLogin.body.token;
-    expect(specialistLogin.statusCode).toBe(200);
+    // login doctor
+    const doctorLogin = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
+    const doctorToken = doctorLogin.body && doctorLogin.body.token;
+    expect(doctorLogin.statusCode).toBe(200);
 
-    // specialist updates referral status
+    // doctor approves referral
     const updateRes = await request(app)
       .put(`/referrals/${referralId}/approve`)
-      .set('Authorization', `Bearer ${specialistToken}`)
+      .set('Authorization', `Bearer ${doctorToken}`)
       .send({
-        status: 'accepted',
-        response_notes: 'Accepted referral'
+        status: 'approved'
       });
 
     expect(updateRes.statusCode).toBe(200);
 
     // student views referrals
-    const studentLogin = await request(app).post('/login').send({ email: studentEmail, password: pwd });
-    const studentToken = studentLogin.body && studentLogin.body.token;
-    expect(studentLogin.statusCode).toBe(200);
-
     const viewRes = await request(app)
       .get('/referrals/student')
       .set('Authorization', `Bearer ${studentToken}`);

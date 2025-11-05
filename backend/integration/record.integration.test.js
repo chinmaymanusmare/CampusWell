@@ -34,7 +34,7 @@ describe('Records integration tests', () => {
 
   afterAll(async () => {
     // clean records and users
-    await pool.query('DELETE FROM medical_records WHERE student_id = $1', [studentId]);
+    await pool.query('DELETE FROM prescriptions WHERE student_id = $1', [studentId]);
     await pool.query('DELETE FROM users WHERE email IN ($1, $2)', [studentEmail, doctorEmail]);
   });
 
@@ -44,14 +44,14 @@ describe('Records integration tests', () => {
     const doctorToken = doctorLogin.body && doctorLogin.body.token;
     expect(doctorLogin.statusCode).toBe(200);
 
-    // doctor creates record
+    // doctor creates record (prescriptions table expects medicines field)
     const createRes = await request(app)
       .post('/records')
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         student_id: studentId,
         diagnosis: 'Test Diagnosis',
-        prescription: 'Test Prescription',
+        medicines: 'Test Prescription',
         notes: 'Test Notes'
       });
 

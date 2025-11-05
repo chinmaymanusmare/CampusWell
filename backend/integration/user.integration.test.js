@@ -50,12 +50,13 @@ describe('Users integration tests', () => {
     expect(profileRes.statusCode).toBe(200);
     expect(profileRes.body.data.email).toBe(testEmail);
 
-    // update profile via PUT /users/:id
+    // update profile via PUT /users/:id (include email to avoid NOT NULL constraint)
     const updateRes = await request(app)
       .put(`/users/${userId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: 'Updated Test User',
+        email: testEmail,
         roll_no: 'R101'
       });
 

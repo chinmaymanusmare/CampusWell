@@ -34,14 +34,13 @@ describe('Concerns integration tests', () => {
     const studentToken = lres.body && lres.body.token;
     expect(lres.statusCode).toBe(200);
 
-    // create concern
+    // create concern (controller expects category and message)
     const createRes = await request(app)
       .post('/concerns')
       .set('Authorization', `Bearer ${studentToken}`)
       .send({ 
-        title: 'Test Concern',
-        description: 'Integration test concern',
-        type: 'medical'
+        category: 'medical',
+        message: 'Integration test concern'
       });
 
     expect(createRes.statusCode).toBe(201);

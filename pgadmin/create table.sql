@@ -16,6 +16,7 @@ CREATE TABLE users (
 -- =========================================
 CREATE TABLE concerns (
     id SERIAL PRIMARY KEY,
+    student_id INT REFERENCES users(id) ON DELETE CASCADE,
     category VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     status VARCHAR(50) CHECK (status IN ('pending', 'responded')) DEFAULT 'pending',
@@ -98,6 +99,18 @@ CREATE TABLE order_medicines (
     medicine_id INT REFERENCES medicines(id) ON DELETE CASCADE,
     quantity INT NOT NULL CHECK (quantity > 0),
     PRIMARY KEY (order_id, medicine_id)
+);
+
+
+-- =========================================
+--  NOTIFICATIONS TABLE
+-- =========================================
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 

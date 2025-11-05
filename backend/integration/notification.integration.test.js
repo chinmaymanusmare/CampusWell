@@ -50,12 +50,11 @@ describe('Notifications integration tests', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         user_id: userId,
-        title: 'Test Notification',
-        message: 'This is a test notification',
-        type: 'info'
+        message: 'This is a test notification'
       });
 
-    expect(createRes.statusCode).toBe(201);
+    // controller returns 200 on successful send
+    expect(createRes.statusCode).toBe(200);
 
     // login user
     const userLogin = await request(app).post('/login').send({ email: userEmail, password: pwd });
