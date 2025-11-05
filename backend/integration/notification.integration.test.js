@@ -44,9 +44,9 @@ describe('Notifications integration tests', () => {
     const adminToken = adminLogin.body && adminLogin.body.token;
     expect(adminLogin.statusCode).toBe(200);
 
-    // admin creates notification
+    // admin creates notification (route is /notifications/send)
     const createRes = await request(app)
-      .post('/notifications')
+      .post('/notifications/send')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         user_id: userId,

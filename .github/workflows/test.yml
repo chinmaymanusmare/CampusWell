@@ -37,12 +37,28 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Install psql client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+
+    - name: Setup test database schema
+      env:
+        PGPASSWORD: postgres
+      run: |
+        # wait for postgres service to be ready
+        for i in {1..20}; do pg_isready -h localhost -p 5432 && break || sleep 1; done
+        # load schema and seed data used by tests
+        psql -h localhost -U postgres -d campuswell_test -f ./pgadmin/"create table.sql"
+        # optionally load dummy data
+        if [ -f ./pgadmin/"dummy data.sql" ]; then psql -h localhost -U postgres -d campuswell_test -f ./pgadmin/"dummy data.sql"; fi
+
     - name: Run tests
       env:
         DB_HOST: localhost
         DB_USER: postgres
         DB_PASSWORD: postgres
         DB_NAME: campuswell_test
-        JWT_SECRET: test_secret
+        JWT_SECRET: testsecret
         NODE_ENV: test
       run: npm run test:integration

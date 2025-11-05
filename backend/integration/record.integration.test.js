@@ -63,9 +63,9 @@ describe('Records integration tests', () => {
     const studentToken = studentLogin.body && studentLogin.body.token;
     expect(studentLogin.statusCode).toBe(200);
 
-    // student views records
+    // student views records (route is /records/student)
     const viewRes = await request(app)
-      .get('/records')
+      .get('/records/student')
       .set('Authorization', `Bearer ${studentToken}`);
 
     expect(viewRes.statusCode).toBe(200);

@@ -38,17 +38,21 @@ describe('Users integration tests', () => {
     const token = loginRes.body && loginRes.body.token;
     expect(token).toBeTruthy();
 
+    // fetch user id then get profile via /users/:id
+    const q = await pool.query('SELECT id FROM users WHERE email = $1', [testEmail]);
+    const userId = q.rows[0].id;
+
     // get profile
     const profileRes = await request(app)
-      .get('/profile')
+      .get(`/users/${userId}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(profileRes.statusCode).toBe(200);
     expect(profileRes.body.data.email).toBe(testEmail);
 
-    // update profile
+    // update profile via PUT /users/:id
     const updateRes = await request(app)
-      .put('/profile')
+      .put(`/users/${userId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: 'Updated Test User',

@@ -54,9 +54,9 @@ describe('Referrals integration tests', () => {
     const doctorToken = doctorLogin.body && doctorLogin.body.token;
     expect(doctorLogin.statusCode).toBe(200);
 
-    // create referral
+    // create referral (route is /referrals/request)
     const createRes = await request(app)
-      .post('/referrals')
+      .post('/referrals/request')
       .set('Authorization', `Bearer ${doctorToken}`)
       .send({
         student_id: studentId,
@@ -75,7 +75,7 @@ describe('Referrals integration tests', () => {
 
     // specialist updates referral status
     const updateRes = await request(app)
-      .put(`/referrals/${referralId}`)
+      .put(`/referrals/${referralId}/approve`)
       .set('Authorization', `Bearer ${specialistToken}`)
       .send({
         status: 'accepted',

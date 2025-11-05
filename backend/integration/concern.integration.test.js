@@ -47,9 +47,9 @@ describe('Concerns integration tests', () => {
     expect(createRes.statusCode).toBe(201);
     concernId = createRes.body.data && createRes.body.data.id;
 
-    // view concerns
+    // view concerns (route is /concerns/student)
     const viewRes = await request(app)
-      .get('/concerns')
+      .get('/concerns/student')
       .set('Authorization', `Bearer ${studentToken}`);
     
     expect(viewRes.statusCode).toBe(200);
