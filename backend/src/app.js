@@ -42,6 +42,8 @@ app.use("/admin", adminRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/notifications", notificationRoutes);
 
+const availabilityRoutes = require("./routes/availabilityRoutes");
+app.use("/availability", availabilityRoutes);
 
 
 module.exports = app;

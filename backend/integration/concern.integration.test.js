@@ -19,8 +19,8 @@ describe('Concerns integration tests', () => {
     });
 
     // create a doctor to reply to concerns
-    const doctorEmail = `int_doctor_${timestamp}@example.com`;
-    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor' });
+  const doctorEmail = `int_doctor_${timestamp}@example.com`;
+  await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
     const d = await pool.query('SELECT id FROM users WHERE email = $1', [doctorEmail]);
     doctorId = d.rows[0].id;
 

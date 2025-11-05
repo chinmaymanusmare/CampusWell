@@ -23,7 +23,8 @@ describe('Records integration tests', () => {
       name: 'Int Doctor', 
       email: doctorEmail, 
       password: pwd, 
-      role: 'doctor' 
+      role: 'doctor',
+      timePerPatient: 15
     });
 
     const s = await pool.query('SELECT id FROM users WHERE email = $1', [studentEmail]);

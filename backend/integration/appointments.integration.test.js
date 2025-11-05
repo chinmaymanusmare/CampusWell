@@ -12,8 +12,8 @@ describe('Appointments integration tests', () => {
 
   beforeAll(async () => {
     // create users via signup endpoints (exercise full stack)
-    await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
-    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor' });
+  await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
+  await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
 
     const s = await pool.query('SELECT id FROM users WHERE email = $1', [studentEmail]);
     studentId = s.rows[0].id;

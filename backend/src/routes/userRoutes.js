@@ -29,7 +29,8 @@ const router = express.Router();
 const {
   getAllUsersForAdmin,
   getUserById,
-  updateUserById
+  updateUserById,
+  updateTimePerPatient
 } = require('../controllers/userController');
 
 const verifyToken = require('../middleware/auth');
@@ -38,5 +39,8 @@ const { authorize, authorizeUserOrAdmin } = require('../middleware/authorize');
 router.get('/', verifyToken, authorize('admin'), getAllUsersForAdmin);
 router.get('/:id', verifyToken, authorizeUserOrAdmin, getUserById);
 router.put('/:id', verifyToken, authorizeUserOrAdmin, updateUserById);
+
+// New endpoint for updating time per patient (doctors only)
+router.put('/doctor/time-per-patient', verifyToken, authorize('doctor'), updateTimePerPatient);
 
 module.exports = router;

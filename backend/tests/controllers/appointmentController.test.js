@@ -1,5 +1,12 @@
 jest.mock('../../src/config/db', () => ({ query: jest.fn(), connect: jest.fn() }));
 
+// Mock the availability check
+jest.mock('../../src/controllers/availabilityController', () => ({
+  calculateAvailableSlots: jest.fn()
+}));
+
+const { calculateAvailableSlots } = require('../../src/controllers/availabilityController');
+
 const { getDoctors, bookAppointment, getStudentAppointments, getDoctorAppointments, rescheduleAppointment, cancelAppointment } = require('../../src/controllers/appointmentController');
 const pool = require('../../src/config/db');
 
@@ -19,6 +26,7 @@ describe('Appointment Controller', () => {
       json: jest.fn()
     };
     pool.query.mockReset();
+    calculateAvailableSlots.mockReset();
   });
 
   describe('getDoctors', () => {
@@ -41,12 +49,14 @@ describe('Appointment Controller', () => {
   describe('bookAppointment', () => {
     test('should book appointment successfully', async () => {
       mockReq.body = { doctor_id: 2, date: '2025-12-01', time: '10:00' };
-      const mockConflict = { rows: [] };
       const mockDoctor = { rows: [{ name: 'Dr. Smith' }] };
       const mockStudent = { rows: [{ name: 'John Doe' }] };
       const mockAppointment = { rows: [{ id: 1, student_id: 1, doctor_id: 2 }] };
 
-      pool.query.mockResolvedValueOnce(mockConflict)
+      // Mock successful availability check
+      calculateAvailableSlots.mockResolvedValueOnce({ available: true });
+      
+      pool.query
         .mockResolvedValueOnce(mockDoctor)
         .mockResolvedValueOnce(mockStudent)
         .mockResolvedValueOnce(mockAppointment);
@@ -59,18 +69,36 @@ describe('Appointment Controller', () => {
 
     test('should reject when slot is not available', async () => {
       mockReq.body = { doctor_id: 2, date: '2025-12-01', time: '10:00' };
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+      
+      // Mock failed availability check
+      calculateAvailableSlots.mockResolvedValueOnce({ 
+        available: false,
+        message: 'This slot is fully booked or doctor is not available'
+      });
+
+        // Mock successful doctor check response
+        pool.query.mockResolvedValueOnce({ rows: [{ name: 'Dr. Smith' }] });
 
       await bookAppointment(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not available at this slot' });
+      expect(mockRes.json).toHaveBeenCalledWith({ 
+        success: false, 
+        message: 'This slot is fully booked or doctor is not available' 
+      });
     });
 
     test('should handle non-existent doctor', async () => {
       mockReq.body = { doctor_id: 999, date: '2025-12-01', time: '10:00' };
-      pool.query.mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+      
+      // Mock availability check for non-existent doctor
+      calculateAvailableSlots.mockResolvedValueOnce({ 
+        available: false,
+        message: 'Doctor is not available at this time'
+      });
+      
+      // Mock database queries
+      pool.query.mockResolvedValueOnce({ rows: [] }); // doctor query returns no results
 
       await bookAppointment(mockReq, mockRes);
 

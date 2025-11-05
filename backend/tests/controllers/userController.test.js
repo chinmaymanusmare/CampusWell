@@ -26,6 +26,12 @@ describe('User Controller', () => {
     };
     pool.query.mockReset();
     bcrypt.compare.mockReset();
+    // suppress console.error from error-path tests
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    console.error.mockRestore();
   });
 
   describe('signup', () => {
@@ -88,6 +94,13 @@ describe('User Controller', () => {
         success: true,
         user: userData
       });
+    });
+
+    test('returns 400 when doctor missing timePerPatient', async () => {
+      req.body = { name: 'Dr', email: 'dr@test.com', password: 'validPass123', role: 'doctor' };
+      await signup(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, message: expect.stringContaining('Time per patient is required for doctors') }));
     });
 
   });
@@ -182,6 +195,14 @@ describe('User Controller', () => {
       });
     });
 
+    test('returns 400 when updating doctor with invalid timePerPatient', async () => {
+      req.params.id = '1';
+      req.body = { name: 'Doc', email: 'doc@test.com', role: 'doctor', timePerPatient: 0 };
+      await updateUserById(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, message: expect.stringContaining('Time per patient is required for doctors') }));
+    });
+
   });
 
   describe('getAllUsersForAdmin', () => {
@@ -255,6 +276,92 @@ describe('User Controller', () => {
         success: true,
         message: 'Logged out successfully'
       });
+    });
+  });
+
+  describe('updateTimePerPatient', () => {
+    test('returns 400 when timePerPatient invalid', async () => {
+      req.user = { id: 10 };
+      req.body = { timePerPatient: 0 };
+      await require('../../src/controllers/userController').updateTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test('returns 403 when user is not a doctor', async () => {
+      req.user = { id: 11 };
+      req.body = { timePerPatient: 15 };
+      // doctorCheck returns non-doctor
+      pool.query.mockResolvedValueOnce({ rows: [{ role: 'student' }] });
+
+      await require('../../src/controllers/userController').updateTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    test('successfully updates timePerPatient and notes availability impact', async () => {
+      req.user = { id: 12 };
+      req.body = { timePerPatient: 20 };
+
+      // Sequence of DB calls in updateTimePerPatient:
+      // 1) doctorCheck -> rows: [{ role: 'doctor' }]
+      // 2) update -> rows: [{ id:12, name: 'Dr X', time_per_patient: 20 }]
+      // 3) availabilityCheck -> rows: [{ count: '3' }]
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ role: 'doctor' }] })
+        .mockResolvedValueOnce({ rows: [{ id:12, name: 'Dr X', time_per_patient: 20 }] })
+        .mockResolvedValueOnce({ rows: [{ count: '3' }] });
+
+      await require('../../src/controllers/userController').updateTimePerPatient(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, message: expect.stringContaining('affect your existing availability slots'), data: expect.any(Object) }));
+    });
+  });
+
+  describe('error and edge catch paths', () => {
+    test('signup handles DB errors with 500', async () => {
+      req.body = { name: 'Err', email: 'err@test.com', password: 'validPass123' };
+      pool.query.mockRejectedValueOnce(new Error('DB failure'));
+      await signup(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('login handles DB errors with 500', async () => {
+      req.body = { email: 'x@test.com', password: 'pass' };
+      pool.query.mockRejectedValueOnce(new Error('DB fail'));
+      await login(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('getUserById handles DB errors with 500', async () => {
+      req.params.id = '1';
+      pool.query.mockRejectedValueOnce(new Error('DB fail'));
+      await getUserById(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('getAllUsersForAdmin handles DB errors with 500', async () => {
+      pool.query.mockRejectedValueOnce(new Error('DB fail'));
+      await getAllUsersForAdmin(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('updateUserById handles DB errors with 500', async () => {
+      req.params.id = '1';
+      req.body = { name: 'A' };
+      pool.query.mockRejectedValueOnce(new Error('DB fail'));
+      await updateUserById(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('updateTimePerPatient returns 404 when update returns no rows (doctor not found)', async () => {
+      req.user = { id: 20 };
+      req.body = { timePerPatient: 15 };
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ role: 'doctor' }] }) // doctorCheck
+        .mockResolvedValueOnce({ rows: [] }); // update returns no rows
+
+      await require('../../src/controllers/userController').updateTimePerPatient(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
     });
   });
 });
