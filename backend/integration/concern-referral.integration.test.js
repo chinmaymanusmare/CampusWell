@@ -90,18 +90,11 @@ describe('Concerns, Referrals & Health Records Integration', () => {
   });
 
   afterAll(async () => {
-    // Clean up only test-created data
-    if (concernId) {
-      await pool.query('DELETE FROM concerns WHERE id = $1', [concernId]);
-    }
-    if (referralId) {
-      await pool.query('DELETE FROM referrals WHERE id = $1', [referralId]);
-    }
-    // Prescriptions and records: delete by studentId if possible (assuming test data is unique)
-    if (studentId) {
-      await pool.query('DELETE FROM prescriptions WHERE student_id = $1', [studentId]);
-    }
-    await pool.query('DELETE FROM users WHERE email IN ($1, $2, $3)', [studentEmail, doctorEmail, doctor2Email]);
+    // Clean up all test data including any lingering records
+    await pool.query("DELETE FROM concerns WHERE student_id IN (SELECT id FROM users WHERE email LIKE 'int_stud_%@example.com')");
+    await pool.query("DELETE FROM referrals WHERE student_id IN (SELECT id FROM users WHERE email LIKE 'int_stud_%@example.com')");
+    await pool.query("DELETE FROM prescriptions WHERE student_id IN (SELECT id FROM users WHERE email LIKE 'int_stud_%@example.com')");
+    await pool.query("DELETE FROM users WHERE email LIKE 'int_stud_%@example.com' OR email LIKE 'int_doc_%@example.com'");
   });
 
   describe('Anonymous Concerns Flow', () => {
@@ -190,7 +183,7 @@ describe('Concerns, Referrals & Health Records Integration', () => {
 
   describe('Prescription & Health Records', () => {
     test('specialized records visibility based on doctor specialization', async () => {
-      // First doctor creates specialized prescription
+      // First doctor creates specialized record
       const addSpec = await request(app)
         .post('/records')
         .set('Authorization', `Bearer ${doctorToken}`)

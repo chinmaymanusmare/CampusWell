@@ -29,8 +29,10 @@ describe('Doctor Time Per Patient Integration Tests', () => {
     });
 
     afterAll(async () => {
-        // Clean up test data
-        await pool.query('DELETE FROM users WHERE email = $1', [doctorEmail]);
+        // Clean up all test data including appointments and all test users
+        await pool.query("DELETE FROM appointments WHERE student_id IN (SELECT id FROM users WHERE email LIKE 'student%@example.com')");
+        await pool.query("DELETE FROM doctor_availability WHERE doctor_id IN (SELECT id FROM users WHERE email LIKE 'doctor%@example.com')");
+        await pool.query("DELETE FROM users WHERE email LIKE 'student%@example.com' OR email LIKE 'doctor%@example.com'");
     });
 
     describe('Update Time Per Patient', () => {

@@ -36,11 +36,10 @@ describe('Appointments integration tests', () => {
   });
 
   afterAll(async () => {
-    // clean up only the appointment created by this test
-    if (appointmentId) {
-      await pool.query('DELETE FROM appointments WHERE id = $1', [appointmentId]);
-    }
-    await pool.query('DELETE FROM users WHERE email = $1 OR email = $2', [studentEmail, doctorEmail]);
+    // Clean up all test data including any lingering appointments and availabilities
+    await pool.query("DELETE FROM appointments WHERE student_id IN (SELECT id FROM users WHERE email LIKE 'int_student_%@example.com')");
+    await pool.query("DELETE FROM doctor_availability WHERE doctor_id IN (SELECT id FROM users WHERE email LIKE 'int_doctor_%@example.com')");
+    await pool.query("DELETE FROM users WHERE email LIKE 'int_student_%@example.com' OR email LIKE 'int_doctor_%@example.com'");
   });
 
   test('student can book, view and doctor can view then reschedule appointment', async () => {

@@ -9,8 +9,8 @@ describe('Auth integration tests', () => {
   const password = 'Passw0rd1';
 
   afterAll(async () => {
-    // cleanup created users
-    await pool.query('DELETE FROM users WHERE email = $1 OR email = $2', [studentEmail, doctorEmail]);
+    // cleanup all test users created by integration tests
+    await pool.query("DELETE FROM users WHERE email LIKE 'student%@example.com' OR email LIKE 'doctor%@example.com'");
   });
 
   test('signup and login flow for student and doctor', async () => {
