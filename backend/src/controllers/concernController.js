@@ -25,7 +25,7 @@ exports.getConcernsForStudent = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id, category, message, response, status, created_at, responded_at
+      `SELECT id, category, message, response, status, created_at, responded_at, responded_by
        FROM public.concerns
        WHERE student_id = $1
        ORDER BY id DESC`,

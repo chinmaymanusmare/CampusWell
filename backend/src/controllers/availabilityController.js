@@ -77,7 +77,7 @@ const getAvailability = async (req, res) => {
 // Calculate available slots
 const calculateAvailableSlots = async (doctorId, date, time) => {
 	try {
-		// Get doctor's availability for the specified date and time
+		// Get doctor's availability and current bookings for the specific time slot
 		const availabilityResult = await pool.query(
 			`SELECT da.*, u.time_per_patient,
 					(SELECT COUNT(*) 
@@ -90,7 +90,8 @@ const calculateAvailableSlots = async (doctorId, date, time) => {
 			 JOIN users u ON u.id = da.doctor_id
 			 WHERE da.doctor_id = $1 
 			 AND da.date = $2
-			 AND $3::time BETWEEN da.start_time AND da.end_time`,
+			 AND $3::time >= da.start_time
+			 AND $3::time < da.end_time`,
 			[doctorId, date, time]
 		);
 
@@ -105,12 +106,17 @@ const calculateAvailableSlots = async (doctorId, date, time) => {
 		const availability = availabilityResult.rows[0];
 		const currentBookings = parseInt(availability.current_bookings || '0');
 		const timePerPatient = availability.time_per_patient;
-		const maxPatients = availability.max_patients || 
-			Math.floor(
-				(new Date(`2000-01-01 ${availability.end_time}`) - 
-				 new Date(`2000-01-01 ${availability.start_time}`)) / 
-				(timePerPatient * 60000)
-			);
+		// Calculate max patients for this time slot if not explicitly set
+		let maxPatients;
+		if (availability.max_patients) {
+			maxPatients = availability.max_patients;
+		} else {
+			// Convert duration to minutes and divide by time per patient
+			const startMinutes = new Date(`2000-01-01 ${availability.start_time}`).getTime();
+			const endMinutes = new Date(`2000-01-01 ${availability.end_time}`).getTime();
+			const slotDurationMinutes = (endMinutes - startMinutes) / 60000;
+			maxPatients = Math.floor(slotDurationMinutes / timePerPatient);
+		}
 
 		// debug logs for integration test troubleshooting
 		console.log('calculateAvailableSlots -> availability rows:', availabilityResult.rows.length);

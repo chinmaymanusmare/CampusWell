@@ -66,7 +66,8 @@ CREATE TABLE prescriptions (
     date DATE DEFAULT CURRENT_DATE,
     medicines TEXT,
     diagnosis TEXT,
-    notes TEXT
+    notes TEXT,
+    category VARCHAR(255) DEFAULT 'general'
 );
 
 -- =========================================

@@ -22,7 +22,7 @@ describe('recordController', () => {
     req.user.id = 4; // doctor id
     req.body = { student_id: 9, diagnosis: 'X', notes: 'Y' };
     pool.query
-      .mockResolvedValueOnce({ rows: [{ name: 'Dr Z' }] }) // doctor name
+      .mockResolvedValueOnce({ rows: [{ name: 'Dr Z', specialization: 'gynac' }] }) // doctor name + specialization
       .mockResolvedValueOnce({ rows: [{ id: 55 }] }); // insert result
 
     await recordController.addHealthRecord(req, res);
@@ -46,7 +46,9 @@ describe('recordController', () => {
 
   test('getStudentRecordForDoctor returns data', async () => {
     req.params.studentId = '5';
-    pool.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 1 }, { id: 2 }] });
+    // first call returns doctor's specialization, second returns prescription rows
+    pool.query.mockResolvedValueOnce({ rows: [{ specialization: 'gynac' }] })
+      .mockResolvedValueOnce({ rowCount: 2, rows: [{ id: 1 }, { id: 2 }] });
     await recordController.getStudentRecordForDoctor(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));

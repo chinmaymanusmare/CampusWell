@@ -20,6 +20,7 @@ tags:
   - name: Referrals
   - name: Pharmacy
   - name: Admin
+  - name: Availability
 
 components:
   securitySchemes:
@@ -52,6 +53,9 @@ paths:
                 email: { type: string }
                 password: { type: string }
                 roll_no: { type: string }
+                role: { type: string }
+                specialization: { type: string }
+                timePerPatient: { type: string }
       responses:
         "201": { description: User registered successfully }
         "400": { description: Invalid input data }
@@ -569,5 +573,152 @@ paths:
       summary: Pharmacy inventory summary
       responses:
         "200": { description: Inventory summary }
+
+  ##############################
+  # AVAILABILITY (Doctor Availability)
+  ##############################
+
+  /availability:
+    post:
+      tags: [Availability]
+      summary: Set availability for a specific date (Doctors only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - date
+                - startTime
+                - endTime
+              properties:
+                date: { type: string, format: date }
+                startTime: { type: string }
+                endTime: { type: string }
+                maxPatients: { type: integer }
+      responses:
+        "201":
+          description: Availability created or updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      doctor_id: { type: integer }
+                      date: { type: string, format: date }
+                      start_time: { type: string }
+                      end_time: { type: string }
+                      max_patients: { type: integer }
+        "400": { description: Invalid input data }
+        "401": { description: Unauthorized }
+        "500": { description: Server error }
+
+    get:
+      tags: [Availability]
+      summary: Get availability (use query params startDate and endDate)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+          required: true
+      responses:
+        "200":
+          description: List of availability entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        doctor_id: { type: integer }
+                        date: { type: string, format: date }
+                        start_time: { type: string }
+                        end_time: { type: string }
+                        max_patients: { type: integer }
+                        booked_appointments: { type: integer }
+        "401": { description: Unauthorized }
+        "500": { description: Server error }
+
+  /availability/{doctorId}:
+    get:
+      tags: [Availability]
+      summary: Get availability for a specific doctor between startDate and endDate
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: doctorId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+          required: true
+      responses:
+        "200":
+          description: Availability list for the specified doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        doctor_id: { type: integer }
+                        date: { type: string, format: date }
+                        start_time: { type: string }
+                        end_time: { type: string }
+                        max_patients: { type: integer }
+                        booked_appointments: { type: integer }
+        "401": { description: Unauthorized }
+        "404": { description: Doctor not found }
+        "500": { description: Server error }
+
+  /availability/{id}:
+    delete:
+      tags: [Availability]
+      summary: Delete a specific availability entry (Doctors only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Availability deleted successfully }
+        "400": { description: Cannot delete availability with booked appointments }
+        "401": { description: Unauthorized }
+        "404": { description: Availability not found }
+        "500": { description: Server error }
 
 

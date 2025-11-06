@@ -130,22 +130,43 @@ describe('Doctor Time Per Patient Integration Tests', () => {
             let lastResponse;
 
             // Should only allow 6 appointments (3 hours = 180 minutes / 30 minutes per patient)
-            while (appointmentCount < 7) {
+            // Create multiple students to test max capacity
+            for (let i = 0; i < 7; i++) {
+                const studentEmail = `student${i}${timestamp}@example.com`;
+                await request(app)
+                    .post('/signup')
+                    .send({
+                        name: `Test Student ${i}`,
+                        email: studentEmail,
+                        password,
+                        role: 'student',
+                        roll_no: `TEST${i}`
+                    });
+
+                const studLogin = await request(app)
+                    .post('/login')
+                    .send({ email: studentEmail, password });
+
                 lastResponse = await request(app)
                     .post('/appointments')
-                    .set('Authorization', `Bearer ${studentToken}`)
+                    .set('Authorization', `Bearer ${studLogin.body.token}`)
                     .send({
                         doctor_id: doctorId,
                         date,
                         time: '09:00'
                     });
 
-                if (lastResponse.statusCode !== 201) break;
-                appointmentCount++;
+                if (lastResponse.statusCode === 201) {
+                    appointmentCount++;
+                } else {
+                    break;
+                }
             }
 
-            // Clean up test student
-            await pool.query('DELETE FROM users WHERE email = $1', [studentEmail]);
+            // Clean up test students
+            for (let i = 0; i < 7; i++) {
+                await pool.query('DELETE FROM users WHERE email = $1', [`student${i}${timestamp}@example.com`]);
+            }
 
             expect(appointmentCount).toBe(6);
             expect(lastResponse.statusCode).toBe(400);

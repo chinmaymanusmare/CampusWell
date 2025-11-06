@@ -8,7 +8,7 @@ exports.getStudentRecords = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id, doctor_name, date, medicines, diagnosis, notes
+      `SELECT id, doctor_name, date, medicines, diagnosis, notes, category
        FROM prescriptions 
        WHERE student_id = $1 
        ORDER BY date DESC`,
@@ -33,12 +33,29 @@ exports.getStudentRecordForDoctor = async (req, res) => {
   const { studentId } = req.params;
 
   try {
+    // Determine doctor's specialization to filter specialized records
+    const doctorRes = await pool.query(
+      'SELECT specialization FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const doctorSpec = (doctorRes.rows[0] && doctorRes.rows[0].specialization) || null;
+
+    // Select all general records plus specialized records matching the doctor's specialization
     const result = await pool.query(
-      `SELECT id, doctor_name, date, medicines, diagnosis, notes
-       FROM prescriptions 
-       WHERE student_id = $1 
-       ORDER BY date DESC`,
-      [studentId]
+      `SELECT p.id, p.doctor_name, p.date, p.medicines, p.diagnosis, p.notes, p.category
+       FROM prescriptions p
+       WHERE p.student_id = $1
+       AND (p.category = 'general' OR 
+            (p.category = 'specialized' AND EXISTS (
+              SELECT 1 FROM users d 
+              WHERE d.id = $2 
+              AND d.specialization = (
+                SELECT specialization FROM users d2 
+                WHERE d2.name = p.doctor_name
+              )
+            )))
+       ORDER BY p.date DESC`,
+      [studentId, req.user.id]
     );
 
     res.status(200).json({
@@ -59,17 +76,26 @@ exports.addHealthRecord = async (req, res) => {
   const doctorId = req.user.id;
 
   // Doctor ka naam users table se nikaalo (JWT me nahi tha)
-  const doctorResult = await pool.query("SELECT name FROM users WHERE id = $1", [doctorId]);
+  const doctorResult = await pool.query("SELECT name, specialization FROM users WHERE id = $1", [doctorId]);
   const doctorName = doctorResult.rows[0].name;
+  const doctorSpec = doctorResult.rows[0].specialization;
 
-  const { student_id, diagnosis, notes, medicines } = req.body;
+  const { student_id, diagnosis, notes, medicines, category } = req.body;
 
   try {
+    // Default to general if not specialized
+    let finalCategory = (doctorSpec === 'general' || !doctorSpec) ? 'general' : 'specialized';
+
+    // Override with provided category if valid
+    if (category && (category === 'general' || category === 'specialized')) {
+      finalCategory = category;
+    }
+
     const result = await pool.query(
-      `INSERT INTO prescriptions (student_id, doctor_name, diagnosis, notes, medicines, date)
-       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
+      `INSERT INTO prescriptions (student_id, doctor_name, diagnosis, notes, medicines, date, category)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
        RETURNING *`,
-      [student_id, doctorName, diagnosis, notes, medicines || null]
+      [student_id, doctorName, diagnosis, notes, medicines || null, finalCategory]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });

@@ -68,6 +68,16 @@ exports.bookAppointment = async (req, res) => {
       [student_id]
     );
 
+    // Prevent the same student from booking the same doctor at the same date/time
+    const existingStudentAppt = await pool.query(
+      "SELECT * FROM appointments WHERE student_id = $1 AND doctor_id = $2 AND date = $3 AND time = $4 AND status = 'scheduled';",
+      [student_id, doctor_id, date, time]
+    );
+
+    if (existingStudentAppt.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Student already has an appointment with this doctor at this slot' });
+    }
+
     // Check availability and capacity for this doctor/date/time
     const slots = await calculateAvailableSlots(doctor_id, date, time);
     console.log('bookAppointment -> slots:', slots);
@@ -114,6 +124,13 @@ exports.getDoctorAppointments = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Doctor id is required' });
   }
 
+  // Enforce that a doctor cannot view other doctors' appointments
+  // (doctors must only view their own). Admins may view any.
+  if (req.user && req.user.role === 'doctor') {
+    if (parseInt(doctorId) !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+  }
   try {
     const result = await pool.query(
       "SELECT * FROM appointments WHERE doctor_id = $1 ORDER BY date, time;",

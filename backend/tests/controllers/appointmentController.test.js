@@ -46,9 +46,15 @@ describe('Appointment Controller', () => {
       const mockStudent = { rows: [{ name: 'John Doe' }] };
       const mockAppointment = { rows: [{ id: 1, student_id: 1, doctor_id: 2 }] };
 
-      // New call order: doctor lookup, student lookup, availability check, insert appointment
+      // call order after changes:
+      // 1 doctor lookup
+      // 2 student lookup
+      // 3 existing student appointment check (empty)
+      // 4 availability check
+      // 5 insert appointment
       pool.query.mockResolvedValueOnce(mockDoctor)
         .mockResolvedValueOnce(mockStudent)
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [{ current_bookings: '0', max_patients: 4, start_time: '09:00', end_time: '10:00', time_per_patient: 15 }] })
         .mockResolvedValueOnce(mockAppointment);
 
@@ -68,6 +74,7 @@ describe('Appointment Controller', () => {
 
       pool.query.mockResolvedValueOnce(mockDoctor)
         .mockResolvedValueOnce(mockStudent)
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce(mockAvailability);
 
       await bookAppointment(mockReq, mockRes);
