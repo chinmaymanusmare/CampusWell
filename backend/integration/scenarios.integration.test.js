@@ -6,6 +6,9 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
   const ts = Date.now();
   const studentEmail = `int_s_${ts}@example.com`;
   const studentEmail2 = `int_s2_${ts}@example.com`;
+  const doctorName = `Doctor1_${ts}`;
+  const doctorName2 = `Doctor2_${ts}`;
+  const doctorName3 = `Doctor3_${ts}`;
   const doctorEmail = `int_d_${ts}@example.com`;
   const doctorEmail2 = `int_d2_${ts}@example.com`;
   const doctorEmail3 = `int_d3_${ts}@example.com`;
@@ -22,9 +25,9 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
     await request(app).post('/signup').send({ name: 'Int Student A', email: studentEmail, password: 'Passw0rd1', role: 'student', roll_no: 'R1' });
     await request(app).post('/signup').send({ name: 'Int Student B', email: studentEmail2, password: 'Passw0rd1', role: 'student', roll_no: 'R2' });
 
-    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
-    await request(app).post('/signup').send({ name: 'Int Doctor 2', email: doctorEmail2, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
-    await request(app).post('/signup').send({ name: 'Int Doctor 3', email: doctorEmail3, password: 'Passw0rd1', role: 'doctor', specialization: 'cardio', timePerPatient: 15 });
+  await request(app).post('/signup').send({ name: doctorName, email: doctorEmail, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
+  await request(app).post('/signup').send({ name: doctorName2, email: doctorEmail2, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
+  await request(app).post('/signup').send({ name: doctorName3, email: doctorEmail3, password: 'Passw0rd1', role: 'doctor', specialization: 'cardio', timePerPatient: 15 });
 
     // login
     const l1 = await request(app).post('/login').send({ email: studentEmail, password: 'Passw0rd1' });
