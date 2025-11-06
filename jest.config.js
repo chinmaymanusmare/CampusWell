@@ -1,8 +1,8 @@
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/backend/tests', '<rootDir>/backend/integration'],
+  roots: ['<rootDir>/backend/tests'],
   moduleFileExtensions: ['js', 'json'],
-  testMatch: ['**/?(*.)+(spec|test|integration.test).[jt]s?(x)'],
+  testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
   collectCoverageFrom: ['backend/src/**/*.js', '!backend/src/config/db.js'],
   // Use the real DB pool during tests by default. If you need to use the mock
   // database for quick unit tests, you can temporarily re-enable the

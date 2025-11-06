@@ -78,10 +78,10 @@ exports.addHealthRecord = async (req, res) => {
 
   try {
     // Default to general if not specialized
-    let finalCategory = (doctorSpec === 'general' || !doctorSpec) ? 'general' : 'specialized';
+    let finalCategory = (doctorSpec === 'general' || !doctorSpec) ? 'general' : doctorSpec;
 
     // Override with provided category if valid
-    if (category && (category === 'general' || category === 'specialized')) {
+    if (category) {
       finalCategory = category;
     }
 
@@ -104,7 +104,7 @@ exports.addHealthRecord = async (req, res) => {
 // ===========================
 exports.getPrescriptionById = async (req, res) => {
   const { id } = req.params;
-
+  console.log("Fetching prescription with ID:", id);
   try {
     const result = await pool.query(
       `SELECT id, student_id, doctor_name, date, medicines, diagnosis, notes

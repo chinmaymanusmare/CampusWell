@@ -157,7 +157,7 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
     const addSpec = await request(app)
       .post('/records')
       .set('Authorization', `Bearer ${doctorToken}`)
-      .send({ student_id: studentId, diagnosis: 'SpecDiag', notes: 'SpecNote', medicines: 'MedA' });
+      .send({ student_id: studentId, diagnosis: 'SpecDiag', notes: 'SpecNote', medicines: 'MedA', category: 'specialized' });
     expect(addSpec.statusCode).toBe(201);
 
     // doctor2 (same specialization) should see it

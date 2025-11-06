@@ -327,10 +327,12 @@ paths:
                 student_id: { type: integer }
                 diagnosis: { type: string }
                 notes: { type: string }
+                medicines: { type: array, items: { type: string } }
+                category: { type: string }
       responses:
         "201": { description: Record saved }
 
-  /prescriptions/{id}:
+  /records/prescriptions/{id}:
     get:
       tags: [Health Records]
       summary: Get prescription details
