@@ -6,10 +6,13 @@ CREATE TABLE users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) CHECK (role IN ('student', 'doctor', 'admin', 'pharmacy')) NOT NULL,
+    role VARCHAR(50) NOT NULL,
     roll_number VARCHAR(50),
     specialization VARCHAR(255),
-    time_per_patient INTEGER DEFAULT 15
+    time_per_patient INTEGER,
+    -- If you use roll_no in code, add it here:
+    -- roll_no VARCHAR(50),
+    CHECK (role IN ('student', 'doctor', 'admin', 'pharmacy'))
 );
 
 -- =========================================
@@ -19,7 +22,7 @@ CREATE TABLE concerns (
     id SERIAL PRIMARY KEY,
     category VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    status VARCHAR(50) CHECK (status IN ('pending', 'responded')) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     response TEXT,
     responded_by INT REFERENCES users(id) ON DELETE SET NULL,
@@ -37,7 +40,7 @@ CREATE TABLE appointments (
     doctor_name VARCHAR(255) NOT NULL,
     date DATE NOT NULL,
     time VARCHAR(50) NOT NULL,
-    status VARCHAR(50) CHECK (status IN ('scheduled', 'completed', 'cancelled')) DEFAULT 'scheduled',
+    status VARCHAR(50) DEFAULT 'scheduled',
     reason TEXT
 );
 
@@ -67,7 +70,7 @@ CREATE TABLE prescriptions (
     medicines TEXT,
     diagnosis TEXT,
     notes TEXT,
-    category VARCHAR(255) DEFAULT 'general'
+    category VARCHAR(255)
 );
 
 -- =========================================
@@ -78,7 +81,7 @@ CREATE TABLE referrals (
     student_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     student_name VARCHAR(255) NOT NULL,
     reason TEXT NOT NULL,
-    status VARCHAR(50) CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'pending',
     requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     doctor_notes TEXT
 );
@@ -90,8 +93,8 @@ CREATE TABLE medicines (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    stock INT DEFAULT 0 CHECK (stock >= 0),
-    price INT DEFAULT 0 CHECK (price >= 0)
+    stock INT DEFAULT 0,
+    price INT DEFAULT 0
 );
 
 -- =========================================
@@ -101,10 +104,20 @@ CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     student_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     student_name VARCHAR(255) NOT NULL,
-    status VARCHAR(50) CHECK (status IN ('pending', 'ready', 'collected')) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'pending',
     ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total INT DEFAULT 0 CHECK (total >= 0)
-    ,prescription_link TEXT
+    total INT DEFAULT 0,
+    prescription_link TEXT
+);
+-- =========================================
+--  NOTIFICATIONS TABLE
+-- =========================================
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- =========================================
