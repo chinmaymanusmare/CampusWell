@@ -61,13 +61,15 @@ describe('Pharmacy Complete Flow Integration', () => {
   });
 
   afterAll(async () => {
-    // Clean up
-    await pool.query('DELETE FROM order_medicines');
-    await pool.query('DELETE FROM orders');
-    await pool.query('DELETE FROM medicines WHERE id = $1', [medicineId]);
-    await pool.query('DELETE FROM users WHERE email IN ($1, $2)',
-      [studentEmail, pharmacyEmail]
-    );
+    // Clean up only test-created data
+    if (orderId) {
+      await pool.query('DELETE FROM order_medicines WHERE order_id = $1', [orderId]);
+      await pool.query('DELETE FROM orders WHERE id = $1', [orderId]);
+    }
+    if (medicineId) {
+      await pool.query('DELETE FROM medicines WHERE id = $1', [medicineId]);
+    }
+    await pool.query('DELETE FROM users WHERE email IN ($1, $2)', [studentEmail, pharmacyEmail]);
   });
 
   test('complete pharmacy flow: browse, order, update, notify', async () => {

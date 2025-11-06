@@ -23,11 +23,15 @@ describe('Pharmacy integration tests', () => {
   });
 
   afterAll(async () => {
-    // clean up
-    await pool.query('DELETE FROM order_medicines');
-    await pool.query('DELETE FROM orders');
-    await pool.query('DELETE FROM medicines');
-    await pool.query('DELETE FROM users');
+    // clean up only test-created data
+    if (studentId) {
+      await pool.query('DELETE FROM order_medicines WHERE order_id IN (SELECT id FROM orders WHERE student_id = $1)', [studentId]);
+      await pool.query('DELETE FROM orders WHERE student_id = $1', [studentId]);
+    }
+    if (medicineId) {
+      await pool.query('DELETE FROM medicines WHERE id = $1', [medicineId]);
+    }
+    await pool.query("DELETE FROM users WHERE email = 'teststudent@example.com'");
   });
 
   test('student can place an order with prescription link', async () => {

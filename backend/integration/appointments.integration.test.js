@@ -36,8 +36,10 @@ describe('Appointments integration tests', () => {
   });
 
   afterAll(async () => {
-    // clean appointments and users
-    await pool.query('DELETE FROM appointments');
+    // clean up only the appointment created by this test
+    if (appointmentId) {
+      await pool.query('DELETE FROM appointments WHERE id = $1', [appointmentId]);
+    }
     await pool.query('DELETE FROM users WHERE email = $1 OR email = $2', [studentEmail, doctorEmail]);
   });
 

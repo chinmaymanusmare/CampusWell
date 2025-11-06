@@ -44,18 +44,12 @@ exports.getStudentRecordForDoctor = async (req, res) => {
     const result = await pool.query(
       `SELECT p.id, p.doctor_name, p.date, p.medicines, p.diagnosis, p.notes, p.category
        FROM prescriptions p
+       LEFT JOIN users u ON u.name = p.doctor_name
        WHERE p.student_id = $1
        AND (p.category = 'general' OR 
-            (p.category = 'specialized' AND EXISTS (
-              SELECT 1 FROM users d 
-              WHERE d.id = $2 
-              AND d.specialization = (
-                SELECT specialization FROM users d2 
-                WHERE d2.name = p.doctor_name
-              )
-            )))
+            (p.category = 'specialized' AND u.specialization = $2))
        ORDER BY p.date DESC`,
-      [studentId, req.user.id]
+      [studentId, doctorSpec]
     );
 
     res.status(200).json({

@@ -53,10 +53,25 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
   });
 
   afterAll(async () => {
-    // cleanup
-    await pool.query('DELETE FROM appointments');
-    await pool.query('DELETE FROM prescriptions');
-    await pool.query('DELETE FROM doctor_availability');
+    // cleanup only test-created data
+    // Appointments: delete by studentId and doctorId
+    if (studentId) {
+      await pool.query('DELETE FROM appointments WHERE student_id = $1', [studentId]);
+      await pool.query('DELETE FROM prescriptions WHERE student_id = $1', [studentId]);
+    }
+    if (studentId2) {
+      await pool.query('DELETE FROM appointments WHERE student_id = $1', [studentId2]);
+      await pool.query('DELETE FROM prescriptions WHERE student_id = $1', [studentId2]);
+    }
+    if (doctorId) {
+      await pool.query('DELETE FROM doctor_availability WHERE doctor_id = $1', [doctorId]);
+    }
+    if (doctorId2) {
+      await pool.query('DELETE FROM doctor_availability WHERE doctor_id = $1', [doctorId2]);
+    }
+    if (doctorId3) {
+      await pool.query('DELETE FROM doctor_availability WHERE doctor_id = $1', [doctorId3]);
+    }
     await pool.query('DELETE FROM users WHERE email = $1 OR email = $2 OR email = $3 OR email = $4 OR email = $5', [studentEmail, studentEmail2, doctorEmail, doctorEmail2, doctorEmail3]);
   });
 
