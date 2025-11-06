@@ -1,8 +1,8 @@
 const request = require('supertest');
 const app = require('../src/app');
 
-describe('concern integration placeholders', () => {
-	test('placeholder', () => {
+describe.skip('concern integration placeholders (skipped)', () => {
+	test('placeholder - skipped', () => {
 		expect(true).toBe(true);
 	});
 });

@@ -1,8 +1,8 @@
 const request = require('supertest');
 const app = require('../src/app');
 
-describe('notification integration placeholders', () => {
-	test('placeholder', () => {
+describe.skip('notification integration placeholders (skipped)', () => {
+	test('placeholder - skipped', () => {
 		expect(true).toBe(true);
 	});
 });
