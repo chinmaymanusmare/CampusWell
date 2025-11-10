@@ -104,8 +104,6 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
 
     // doctor1 tries to view doctor2 appointments
     const view = await request(app).get('/appointments/doctor').set('Authorization', `Bearer ${doctorToken}`);
-    // since doctorToken is for doctorId and no doctor_id query param provided, they should only see their own (none) -> if logic forbids cross-view, returns 200 with empty or 403; controller returns 403 when mismatch
-    // Expect either 200 (empty) or 403 depending on controller; our controller returns 200 for doctor viewing their own, but since doctor has no appointments this may be 200. To assert cross-access is prevented, attempt to pass query param doctor_id=doctorId2
     const cross = await request(app).get(`/appointments/doctor?doctor_id=${doctorId2}`).set('Authorization', `Bearer ${doctorToken}`);
     expect([200, 403]).toContain(cross.statusCode);
     if (cross.statusCode === 403) {

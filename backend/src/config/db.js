@@ -6,7 +6,7 @@ const pool = new Pool({
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: String(process.env.DB_PASS),
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT
 });
 
 // During tests we don't want to attempt a real DB connection.
