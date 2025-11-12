@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <%- include('partials/header', { navHtml: '<a href="/" class="btn">LOG OUT</a>' }) %>
+  <main class="main-content">
+    <div class="dashboard-container">
+      <h1 class="welcome-title">Admin Panel</h1>
+      <div class="dashboard-grid">
+        <a href="/admin/add-doctor" class="dashboard-card">ADD DOCTOR</a>
+        <a href="/admin/remove-doctor" class="dashboard-card">REMOVE DOCTOR</a>
+        <a href="/admin/add-pharmacist" class="dashboard-card">ADD PHARMACIST</a>
+        <a href="/admin/remove-pharmacist" class="dashboard-card">REMOVE PHARMACIST</a>
+      </div>
+    </div>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>

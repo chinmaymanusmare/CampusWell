@@ -3,22 +3,52 @@ const YAML = require('yamljs');
 const path = require('path');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config(); 
 const userRoutes = require('./routes/userRoutes');
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Parse cookies
+app.use(cookieParser());
+
+// Parse JSON and URL-encoded bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Set up EJS as view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../../frontend/views'));
+
+// Serve static files (CSS, images, etc.)
+app.use(express.static(path.join(__dirname, '../../frontend/public')));
+app.use('/css', express.static(path.join(__dirname, '../../frontend/css')));
+app.use('/images', express.static(path.join(__dirname, '../../frontend/images')));
 const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Frontend routes (must come before API routes to serve pages)
+const frontendRoutes = require('./routes/frontendRoutes');
+app.use('/', frontendRoutes);
+
+// Web authentication routes (for form-based login/signup)
+const { webLogin, webSignup, webLogout } = require('./controllers/webAuthController');
+app.post('/login', webLogin);
+app.post('/signup', webSignup);
+app.get('/logout', webLogout);
+
+// API routes
 app.use('/users', userRoutes);
 const { signup, login, logout } = require('./controllers/userController');
-app.post('/signup', signup);
-app.use('/login', login);
-
-
-app.post('/logout', logout);
+app.post('/api/signup', signup);
+app.post('/api/login', login);
+app.post('/api/logout', logout);
 
 
 const appointmentRoutes = require('./routes/appointmentRoutes');

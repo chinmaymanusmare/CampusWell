@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Order Medicines</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .form-container {max-width:480px;margin:30px auto;padding:28px;background:#fff;}
+    .form-title {text-align:center;font-size:1.6rem;margin-bottom:24px;}
+    .form-group {display:flex;gap:12px;align-items:center;margin-bottom:14px;}
+    .form-group label {flex:0 0 35%;font-weight:500;}
+    .form-group select,.form-group input {flex:1;padding:10px;border:1px solid #ccc;border-radius:5px;background:#f5f5f5;}
+    .actions {text-align:center;margin-top:24px;}
+    .btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:12px 26px;border-radius:6px;font-weight:600;cursor:pointer;display:inline-block;}
+    .btn-secondary {background:#0d6efd;margin-top:12px;}
+    .message {text-align:center;padding:10px;border-radius:5px;margin-bottom:14px;font-weight:500;}
+    .message-error {background:#f8d7da;color:#721c24;}
+    .message-success {background:#d4edda;color:#155724;}
+  </style>
+</head>
+<body>
+  <%- include('partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <main class="main-content">
+    <div class="form-container">
+      <h2 class="form-title">Order Medicines</h2>
+      <% if (error) { %><p class="message message-error"><%= error %></p><% } %>
+      <% if (success) { %><p class="message message-success"><%= success %></p><% } %>
+      <form action="/order-medicines" method="POST">
+        <div class="form-group">
+          <label for="medicine_id">Medicine</label>
+          <select id="medicine_id" name="medicine_id" required>
+            <option value="" disabled selected>Select</option>
+            <% (medicines||[]).forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.name %> (Stock: <%= m.stock %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="quantity">Quantity</label>
+          <input type="number" id="quantity" name="quantity" min="1" required />
+        </div>
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input type="text" id="address" name="address" required />
+        </div>
+        <div class="form-group">
+          <label for="phone_no">Phone No.</label>
+          <input type="tel" id="phone_no" name="phone_no" required />
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Order</button><br />
+          <a href="/users/<%= userid %>" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+      </form>
+    </div>
+  </main>
+  <%- include('partials/footer') %>
+</body>
+</html>
