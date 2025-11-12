@@ -75,7 +75,16 @@ app.use("/admin", adminRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/notifications", notificationRoutes);
 
+// 404 Error Handler - Must be after all other routes
+app.use((req, res, next) => {
+  res.status(404).render('error/404');
+});
 
+// 500 Error Handler - General error handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).render('error/500');
+});
 
 module.exports = app;
 

@@ -1,32 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Dashboard - Campus Wellness</title>
   <link rel="stylesheet" href="/css/style.css">
   <style>
-    .dashboard-container{max-width:900px;margin:40px auto;padding:20px}
-    .welcome-title{font-size:2rem;font-weight:500;text-align:center;margin-bottom:40px;color:#333}
-    .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:25px}
-    .dashboard-card{display:flex;align-items:center;justify-content:center;min-height:160px;background:#e9e9e9;border-radius:8px;padding:20px;text-decoration:none;color:#333;font-size:1.15rem;font-weight:500;text-align:center;transition:.2s}
-    .dashboard-card:hover{background:#dcdcdc;transform:translateY(-5px);box-shadow:0 5px 15px rgba(0,0,0,.1)}
+    .dashboard-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px
+    }
+
+    .welcome-title {
+      font-size: 2rem;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 40px;
+      color: #333
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 25px
+    }
+
+    .dashboard-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 160px;
+      background: #e9e9e9;
+      border-radius: 8px;
+      padding: 20px;
+      text-decoration: none;
+      color: #333;
+      font-size: 1.15rem;
+      font-weight: 500;
+      text-align: center;
+      transition: .2s
+    }
+
+    .dashboard-card:hover {
+      background: #dcdcdc;
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, .1)
+    }
   </style>
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/" class="btn">LOG OUT</a>' }) %>
-  <main class="main-content">
-    <div class="dashboard-container">
-      <h1 class="welcome-title">Welcome, <%= user.name %></h1>
-      <div class="dashboard-grid">
-        <a href="/users/<%= user.id %>/appointments" class="dashboard-card">BOOK APPOINTMENT</a>
-        <a href="/users/<%= user.id %>/orders" class="dashboard-card">ORDER MEDICINES</a>
-        <a href="/referrals/<%= user.id %>/request" class="dashboard-card">REQUEST REFERRAL</a>
-        <a href="/concerns/<%= user.id %>" class="dashboard-card">ANONYMOUS CONCERN</a>
-        <a href="/records/prescriptions/<%= user.id %>" class="dashboard-card">MY PRESCRIPTIONS</a>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+    <main class="main-content">
+      <div class="dashboard-container">
+        <h1 class="welcome-title">Welcome, <%= user.name %>
+        </h1>
+        <div class="dashboard-grid">
+          <a href="/users/<%= user.id %>/appointments" class="dashboard-card">BOOK APPOINTMENT</a>
+          <a href="/users/<%= user.id %>/appointments/view" class="dashboard-card">VIEW MY APPOINTMENTS</a>
+          <a href="/users/<%= user.id %>/orders" class="dashboard-card">ORDER MEDICINES</a>
+          <a href="/users/<%= user.id %>/orders/view" class="dashboard-card">VIEW MY ORDERS</a>
+          <a href="/referrals/<%= user.id %>/request" class="dashboard-card">REQUEST REFERRAL</a>
+          <a href="/concerns/<%= user.id %>" class="dashboard-card">ANONYMOUS CONCERN</a>
+          <a href="/records/prescriptions/<%= user.id %>" class="dashboard-card">MY PRESCRIPTIONS</a>
+        </div>
       </div>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

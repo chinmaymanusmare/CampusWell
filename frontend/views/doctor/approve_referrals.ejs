@@ -1,52 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Referral Requests</title>
   <link rel="stylesheet" href="/css/style.css" />
   <style>
-    .container {max-width:900px;margin:30px auto;padding:20px;}
-    .title {text-align:center;font-size:1.8rem;margin-bottom:24px;}
-    .card {background:#f0f0f0;padding:18px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:16px;}
-  .details {flex:1; min-width:260px;}
-    .row {display:flex;margin-bottom:8px;}
-    .row strong {width:150px;flex-shrink:0;}
-    .actions {display:flex;flex-direction:column;gap:10px;min-width:160px;}
-    .action-btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 18px;border-radius:6px;font-weight:600;cursor:pointer;width:100%;}
-    .action-btn.reject {background:#dc3545;}
-    .btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;display:inline-block;margin-top:20px;}
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #f0f0f0;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .details {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .row {
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .row strong {
+      width: 150px;
+      flex-shrink: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 160px;
+    }
+
+    .action-btn {
+      background: #0d6efd;
+      color: #fff;
+      text-decoration: none;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .action-btn.reject {
+      background: #dc3545;
+    }
   </style>
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
-  <main class="main-content">
-    <div class="container">
-      <h1 class="title">Referral Requests</h1>
-      <% if ((referrals||[]).length) { %>
-        <% referrals.forEach(r => { %>
-          <div class="card">
-            <div class="details">
-              <div class="row"><strong>Student Id:</strong> <span><%= r.student_id %></span></div>
-              <div class="row"><strong>Student Name:</strong> <span><%= r.student_name %></span></div>
-              <div class="row"><strong>Problem:</strong> <span><%= r.reason %></span></div>
-              <div class="row"><strong>Requested At:</strong> <span><%= new Date(r.requested_at).toLocaleString('en-GB') %></span></div>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+    <main class="main-content">
+      <div class="container">
+        <h1 class="title">Referral Requests</h1>
+        <% if ((referrals||[]).length) { %>
+          <% referrals.forEach(r=> { %>
+            <div class="card">
+              <div class="details">
+                <div class="row"><strong>Student Id:</strong> <span>
+                    <%= r.student_id %>
+                  </span></div>
+                <div class="row"><strong>Student Name:</strong> <span>
+                    <%= r.student_name %>
+                  </span></div>
+                <div class="row"><strong>Problem:</strong> <span>
+                    <%= r.reason %>
+                  </span></div>
+                <div class="row"><strong>Requested At:</strong> <span>
+                    <%= new Date(r.requested_at).toLocaleString('en-GB') %>
+                  </span></div>
+              </div>
+              <div class="actions">
+                <form action="/approve-referrals" method="POST" style="display:contents;">
+                  <input type="hidden" name="referral_id" value="<%= r.id %>" />
+                  <button type="submit" name="action" value="approve" class="action-btn">Approve</button>
+                  <button type="submit" name="action" value="reject" class="action-btn reject">Reject</button>
+                </form>
+              </div>
             </div>
-            <div class="actions">
-              <form action="/approve-referrals" method="POST" style="display:contents;">
-                <input type="hidden" name="referral_id" value="<%= r.id %>" />
-                <button type="submit" name="action" value="approve" class="action-btn">Approve</button>
-                <button type="submit" name="action" value="reject" class="action-btn reject">Reject</button>
-              </form>
-            </div>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <p>No pending referrals.</p>
-      <% } %>
-      <a href="/users/<%= userid %>" class="btn">Back to Dashboard</a>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+            <% }) %>
+              <% } else { %>
+                <p>No pending referrals.</p>
+                <% } %>
+                  <a href="/users/<%= userid %>" class="btn">Back to Dashboard</a>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

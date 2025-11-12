@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>403 - Access Denied | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .error-container {
+      max-width: 600px;
+      margin: 80px auto;
+      padding: 40px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: 700;
+      color: #dc3545;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .error-title {
+      font-size: 1.8rem;
+      color: #333;
+      margin: 20px 0 15px 0;
+      font-weight: 600;
+    }
+
+    .error-message {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .error-actions .btn {
+      min-width: 150px;
+    }
+
+    .error-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      margin-top: 30px;
+      padding: 20px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      color: #856404;
+    }
+
+    .info-box h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+    }
+
+    .info-box p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '' }) %>
+
+  <main class="main-content">
+    <div class="error-container">
+      <div class="error-icon">🚫</div>
+      <h1 class="error-code">403</h1>
+      <h2 class="error-title">Access Denied</h2>
+      <p class="error-message">
+        You don't have permission to access this resource. This page is restricted to authorized users only.
+      </p>
+
+      <div class="error-actions">
+        <a href="/login" class="btn">Login</a>
+        <button onclick="history.back()" class="btn" style="background: #6c757d;">Go Back</button>
+      </div>
+
+      <div class="info-box">
+        <h3>Why am I seeing this?</h3>
+        <p>
+          You may be trying to access a page that requires specific permissions, or your session may have expired. 
+          Please log in with an authorized account to continue.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

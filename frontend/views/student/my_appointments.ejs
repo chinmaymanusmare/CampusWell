@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Appointments | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 30px;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+      font-weight: 600;
+      font-size: 1.8rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #666;
+      transition: all 0.3s;
+    }
+
+    .tab.active {
+      color: #0d6efd;
+      border-bottom-color: #0d6efd;
+    }
+
+    .tab:hover {
+      color: #0d6efd;
+    }
+
+    .appointments-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .appointment-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s;
+    }
+
+    .appointment-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .appointment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .doctor-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .appointment-status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-scheduled {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status-completed {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .status-cancelled {
+      background-color: #f8d7da;
+      color: #842029;
+    }
+
+    .appointment-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-label {
+      font-weight: 500;
+      color: #666;
+    }
+
+    .detail-value {
+      color: #333;
+    }
+
+    .appointment-reason {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .reason-label {
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .reason-text {
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .no-appointments {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+
+    .no-appointments-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .no-appointments-text {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '' }) %>
+
+  <main class="main-content">
+    <div class="container">
+      <h1 class="page-title">My Appointments</h1>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('upcoming')">
+          Upcoming
+        </button>
+        <button class="tab" onclick="showTab('past')">
+          Past
+        </button>
+        <button class="tab" onclick="showTab('all')">
+          All
+        </button>
+      </div>
+
+      <!-- Upcoming Appointments -->
+      <div id="upcoming" class="tab-content active">
+        <% 
+        const upcomingAppts = appointments.filter(apt => {
+          const aptDate = new Date(apt.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return aptDate >= today && apt.status === 'scheduled';
+        });
+        %>
+
+        <% if (upcomingAppts.length === 0) { %>
+          <div class="no-appointments">
+            <div class="no-appointments-icon">📅</div>
+            <div class="no-appointments-text">No upcoming appointments</div>
+            <a href="/users/<%= userid %>/appointments" class="btn">Book New Appointment</a>
+          </div>
+        <% } else { %>
+          <div class="appointments-grid">
+            <% upcomingAppts.forEach(apt => { %>
+              <div class="appointment-card">
+                <div class="appointment-header">
+                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <span class="appointment-status status-scheduled">Scheduled</span>
+                </div>
+
+                <div class="appointment-details">
+                  <div class="detail-item">
+                    <span class="detail-label">📅 Date:</span>
+                    <span class="detail-value"><%= new Date(apt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">⏰ Time:</span>
+                    <span class="detail-value"><%= apt.time %></span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">🏥 Specialization:</span>
+                    <span class="detail-value"><%= apt.specialization || 'General' %></span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">📍 Location:</span>
+                    <span class="detail-value">Campus Clinic</span>
+                  </div>
+                </div>
+
+                <% if (apt.reason) { %>
+                  <div class="appointment-reason">
+                    <div class="reason-label">Reason for Visit:</div>
+                    <div class="reason-text"><%= apt.reason %></div>
+                  </div>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Past Appointments -->
+      <div id="past" class="tab-content">
+        <% 
+        const pastAppts = appointments.filter(apt => {
+          const aptDate = new Date(apt.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return aptDate < today || apt.status === 'completed' || apt.status === 'cancelled';
+        });
+        %>
+
+        <% if (pastAppts.length === 0) { %>
+          <div class="no-appointments">
+            <div class="no-appointments-icon">📋</div>
+            <div class="no-appointments-text">No past appointments</div>
+          </div>
+        <% } else { %>
+          <div class="appointments-grid">
+            <% pastAppts.forEach(apt => { %>
+              <div class="appointment-card">
+                <div class="appointment-header">
+                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <span class="appointment-status status-<%= apt.status %>">
+                    <%= apt.status.charAt(0).toUpperCase() + apt.status.slice(1) %>
+                  </span>
+                </div>
+
+                <div class="appointment-details">
+                  <div class="detail-item">
+                    <span class="detail-label">📅 Date:</span>
+                    <span class="detail-value"><%= new Date(apt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">⏰ Time:</span>
+                    <span class="detail-value"><%= apt.time %></span>
+                  </div>
+                </div>
+
+                <% if (apt.reason) { %>
+                  <div class="appointment-reason">
+                    <div class="reason-label">Reason for Visit:</div>
+                    <div class="reason-text"><%= apt.reason %></div>
+                  </div>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- All Appointments -->
+      <div id="all" class="tab-content">
+        <% if (appointments.length === 0) { %>
+          <div class="no-appointments">
+            <div class="no-appointments-icon">📋</div>
+            <div class="no-appointments-text">No appointments found</div>
+            <a href="/users/<%= userid %>/appointments" class="btn">Book Your First Appointment</a>
+          </div>
+        <% } else { %>
+          <div class="appointments-grid">
+            <% appointments.forEach(apt => { %>
+              <div class="appointment-card">
+                <div class="appointment-header">
+                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <span class="appointment-status status-<%= apt.status %>">
+                    <%= apt.status.charAt(0).toUpperCase() + apt.status.slice(1) %>
+                  </span>
+                </div>
+
+                <div class="appointment-details">
+                  <div class="detail-item">
+                    <span class="detail-label">📅 Date:</span>
+                    <span class="detail-value"><%= new Date(apt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">⏰ Time:</span>
+                    <span class="detail-value"><%= apt.time %></span>
+                  </div>
+                </div>
+
+                <% if (apt.reason) { %>
+                  <div class="appointment-reason">
+                    <div class="reason-label">Reason for Visit:</div>
+                    <div class="reason-text"><%= apt.reason %></div>
+                  </div>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+    </div>
+  </main>
+
+  <script>
+    function showTab(tabName) {
+      // Hide all tabs
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => tab.classList.remove('active'));
+
+      // Remove active class from all tab buttons
+      const tabButtons = document.querySelectorAll('.tab');
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+
+      // Show selected tab
+      document.getElementById(tabName).classList.add('active');
+      
+      // Add active class to clicked button
+      event.target.classList.add('active');
+    }
+  </script>
+
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

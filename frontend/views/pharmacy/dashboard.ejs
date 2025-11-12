@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pharmacist Dashboard - Campus Wellness</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
   <main class="main-content">
     <div class="dashboard-container">
-      <h1 class="welcome-title">Welcome, <%= user.name %></h1>
-      <div class="dashboard-grid">
-        <a href="/pharmacy/orders/<%= user.id %>" class="dashboard-card">VIEW ORDERS</a>
-        <a href="/pharmacy/stocks/<%= user.id %>" class="dashboard-card">UPDATE STOCKS</a>
+      <h1 class="welcome-title">Welcome, <%= user.name %>
+        </h1>
+        <div class="dashboard-grid">
+          <a href="/pharmacy/orders/<%= user.id %>" class="dashboard-card">VIEW ORDERS</a>
+          <a href="/pharmacy/stocks/<%= user.id %>" class="dashboard-card">UPDATE STOCKS</a>
+        </div>
       </div>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

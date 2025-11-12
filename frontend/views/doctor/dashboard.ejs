@@ -1,24 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Doctor Dashboard - Campus Wellness</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
   <main class="main-content">
     <div class="dashboard-container">
-      <h1 class="welcome-title">Welcome, <%= user.name %></h1>
-      <div class="dashboard-grid">
-        <a href="/appointments/doctor/<%= user.id %>" class="dashboard-card">VIEW APPOINTMENTS</a>
-        <a href="/referrals/doctor/<%= user.id %>" class="dashboard-card">APPROVE REFERRALS</a>
-        <a href="/concerns/doctor/<%= user.id %>" class="dashboard-card">RESPOND TO CONCERNS</a>
-        <a href="/records/<%= user.id %>/edit" class="dashboard-card">UPDATE PRESCRIPTIONS</a>
+      <h1 class="welcome-title">Welcome, <%= user.name %>
+        </h1>
+        <div class="dashboard-grid">
+          <a href="/appointments/doctor/<%= user.id %>" class="dashboard-card">VIEW APPOINTMENTS</a>
+          <a href="/doctors/<%= user.id %>/availability/create" class="dashboard-card">SET AVAILABILITY</a>
+          <a href="/doctors/<%= user.id %>/availability/view" class="dashboard-card">VIEW SCHEDULE</a>
+          <a href="/referrals/doctor/<%= user.id %>" class="dashboard-card">APPROVE REFERRALS</a>
+          <a href="/concerns/doctor/<%= user.id %>" class="dashboard-card">RESPOND TO CONCERNS</a>
+          <a href="/records/<%= user.id %>/edit" class="dashboard-card">UPDATE PRESCRIPTIONS</a>
+        </div>
       </div>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

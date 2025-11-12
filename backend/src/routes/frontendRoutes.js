@@ -27,7 +27,7 @@ router.get('/users/:id', auth, async (req, res) => {
         
         // Verify the user ID matches the authenticated user
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -67,29 +67,142 @@ router.get('/users/:id/appointments', auth, async (req, res) => {
         const userId = req.params.id;
         
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch available doctors
         const doctorsResult = await pool.query(
-            "SELECT id, name, specialization FROM users WHERE role = 'doctor'"
+            "SELECT id, name, specialization FROM users WHERE role = 'doctor' ORDER BY name"
         );
 
-        // Generate time slots (example: 9 AM to 5 PM, hourly)
-        const timeSlots = [];
-        for (let hour = 9; hour <= 17; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00`;
-            timeSlots.push(time);
-        }
+        // Fetch available appointment slots from doctor_availability table
+        // Only show slots for today and future dates
+        const availableSlotsResult = await pool.query(
+            `SELECT 
+                da.id,
+                da.doctor_id,
+                da.date,
+                da.start_time,
+                da.end_time,
+                da.max_patients,
+                COALESCE(u.time_per_patient, 15) as time_per_patient,
+                u.name as doctor_name,
+                u.specialization,
+                COALESCE(
+                    (SELECT COUNT(*) 
+                     FROM appointments a 
+                     WHERE a.doctor_id = da.doctor_id 
+                     AND a.date = da.date 
+                         AND a.time = da.start_time::VARCHAR 
+                     AND a.status != 'cancelled'),
+                    0
+                ) as booked_slots,
+                da.max_patients - COALESCE(
+                    (SELECT COUNT(*) 
+                     FROM appointments a 
+                     WHERE a.doctor_id = da.doctor_id 
+                     AND a.date = da.date 
+                         AND a.time = da.start_time::VARCHAR 
+                     AND a.status != 'cancelled'),
+                    0
+                ) as available_slots
+             FROM doctor_availability da
+             LEFT JOIN users u ON da.doctor_id = u.id
+             WHERE da.date >= CURRENT_DATE
+             ORDER BY da.date, da.start_time, u.name`
+        );
 
         res.render('student/book_appointment', { 
             userid: userId,
             doctors: doctorsResult.rows,
-            timeSlots: timeSlots
+            availableSlots: availableSlotsResult.rows
         });
     } catch (error) {
         console.error('Error loading appointment page:', error);
-        res.status(500).send('Internal server error');
+        res.status(500).render('error/500');
+    }
+});
+
+// Book appointment - handle form submission
+router.post('/book-appointment', auth, async (req, res) => {
+    try {
+        const student_id = req.user.id;
+        const { doctor, date, time } = req.body;
+        
+        console.log('Booking request:', { doctor, date, time, rawBody: req.body });
+        
+        // Validate inputs
+        if (!doctor || !date || !time) {
+            console.error('Missing required fields:', { doctor, date, time });
+            return res.status(400).send('Missing required fields: doctor, date, or time');
+        }
+        
+        // Parse doctor field (format: "id,name")
+        const [doctor_id, doctor_name] = doctor.split(',');
+        
+        // Handle date - could be already formatted or a Date object string
+        let dateOnly = date;
+        if (date.includes('T')) {
+            dateOnly = date.split('T')[0];
+        } else if (date.includes(' ')) {
+            // If it's like "Wed Nov 13 2025"
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            dateOnly = `${year}-${month}-${day}`;
+        }
+        
+        console.log('Processed date:', dateOnly);
+        
+        // Check if student already has an appointment with this doctor at this time
+        const duplicateCheck = await pool.query(
+            `SELECT id FROM appointments 
+             WHERE student_id = $1 
+             AND doctor_id = $2 
+             AND date = $3 
+             AND time = $4 
+             AND status != 'cancelled'`,
+            [student_id, doctor_id, dateOnly, time]
+        );
+        
+        if (duplicateCheck.rows.length > 0) {
+            console.log('Duplicate appointment detected');
+            return res.status(400).send(`
+                <html>
+                <head><title>Booking Error</title></head>
+                <body style="font-family: Arial; padding: 50px; text-align: center;">
+                    <h2 style="color: #dc3545;">❌ Booking Failed</h2>
+                    <p>You already have an appointment with this doctor at this time slot.</p>
+                    <p>Please choose a different time or doctor.</p>
+                    <a href="/users/${student_id}/appointments" style="color: #0d6efd; text-decoration: none; font-weight: bold;">← Back to Book Appointment</a>
+                </body>
+                </html>
+            `);
+        }
+        
+        // Get student name
+        const studentResult = await pool.query(
+            'SELECT name FROM users WHERE id = $1',
+            [student_id]
+        );
+        const student_name = studentResult.rows[0]?.name;
+
+        // Insert appointment
+        const result = await pool.query(
+            `INSERT INTO appointments (student_id, student_name, doctor_id, doctor_name, date, time, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'scheduled')
+             RETURNING *`,
+            [student_id, student_name, doctor_id, doctor_name, dateOnly, time]
+        );
+
+        console.log('Appointment created:', result.rows[0]);
+        
+        // Redirect back to appointments page with success message
+        res.redirect(`/users/${student_id}/appointments?success=true`);
+    } catch (error) {
+        console.error('Error booking appointment:', error);
+        res.status(500).render('error/500');
     }
 });
 
@@ -99,7 +212,7 @@ router.get('/users/:id/orders', auth, async (req, res) => {
         const userId = req.params.id;
         
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch available medicines
@@ -118,15 +231,23 @@ router.get('/users/:id/orders', auth, async (req, res) => {
 });
 
 // Request referral page - for students
-router.get('/referrals/:id/request', auth, (req, res) => {
+router.get('/referrals/:id/request', auth, async (req, res) => {
     try {
         const userId = req.params.id;
         
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
-    res.render('student/request_referral', { userid: userId });
+        // Fetch available doctors
+        const doctorsResult = await pool.query(
+            "SELECT id, name, specialization FROM users WHERE role = 'doctor'"
+        );
+
+        res.render('student/request_referral', { 
+            userid: userId,
+            doctors: doctorsResult.rows
+        });
     } catch (error) {
         console.error('Error loading referral page:', error);
         res.status(500).send('Internal server error');
@@ -134,15 +255,24 @@ router.get('/referrals/:id/request', auth, (req, res) => {
 });
 
 // Anonymous concern page - for students
-router.get('/concerns/:id', auth, (req, res) => {
+router.get('/concerns/:id', auth, async (req, res) => {
     try {
         const userId = req.params.id;
         
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
-    res.render('student/anonymous_concern', { userid: userId });
+        // Fetch user's concerns
+        const concernsResult = await pool.query(
+            'SELECT * FROM concerns WHERE student_id = $1 ORDER BY created_at DESC',
+            [userId]
+        );
+
+        res.render('student/anonymous_concern', { 
+            userid: userId,
+            concerns: concernsResult.rows
+        });
     } catch (error) {
         console.error('Error loading concern page:', error);
         res.status(500).send('Internal server error');
@@ -155,7 +285,7 @@ router.get('/records/prescriptions/:id', auth, async (req, res) => {
         const userId = req.params.id;
         
         if (req.user.id != userId) {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch user's prescriptions
@@ -180,7 +310,7 @@ router.get('/appointments/doctor/:id', auth, async (req, res) => {
         const doctorId = req.params.id;
         
         if (req.user.id != doctorId || req.user.role !== 'doctor') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch doctor's appointments
@@ -205,7 +335,7 @@ router.get('/referrals/doctor/:id', auth, async (req, res) => {
         const doctorId = req.params.id;
         
         if (req.user.id != doctorId || req.user.role !== 'doctor') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch pending referrals
@@ -229,7 +359,7 @@ router.get('/concerns/doctor/:id', auth, async (req, res) => {
         const doctorId = req.params.id;
         
         if (req.user.id != doctorId || req.user.role !== 'doctor') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch pending concerns based on doctor's specialization
@@ -252,15 +382,22 @@ router.get('/concerns/doctor/:id', auth, async (req, res) => {
 });
 
 // Doctor - update prescriptions
-router.get('/records/:id/edit', auth, (req, res) => {
+router.get('/records/:id/edit', auth, async (req, res) => {
     try {
         const doctorId = req.params.id;
         
         if (req.user.id != doctorId || req.user.role !== 'doctor') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
-    res.render('doctor/update_prescription', { userid: doctorId });
+        // Fetch doctor name
+        const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [doctorId]);
+        const username = userResult.rows[0]?.name || 'Doctor';
+
+        res.render('doctor/update_prescription', { 
+            userid: doctorId,
+            username: username
+        });
     } catch (error) {
         console.error('Error loading prescription page:', error);
         res.status(500).send('Internal server error');
@@ -273,7 +410,7 @@ router.get('/pharmacy/orders/:id', auth, async (req, res) => {
         const pharmacistId = req.params.id;
         
         if (req.user.id != pharmacistId || req.user.role !== 'pharmacy') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch all orders
@@ -297,7 +434,7 @@ router.get('/pharmacy/stocks/:id', auth, async (req, res) => {
         const pharmacistId = req.params.id;
         
         if (req.user.id != pharmacistId || req.user.role !== 'pharmacy') {
-            return res.status(403).send('Unauthorized');
+            return res.status(403).render('error/403');
         }
 
         // Fetch all medicines
@@ -312,6 +449,393 @@ router.get('/pharmacy/stocks/:id', auth, async (req, res) => {
     } catch (error) {
         console.error('Error loading stocks page:', error);
         res.status(500).send('Internal server error');
+    }
+});
+
+// Admin: Add Doctor page
+router.get('/admin/add-doctor', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_doctor', { user: userResult.rows[0] });
+    } catch (error) {
+        console.error('Error loading add doctor page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Admin: Add Doctor - POST handler
+router.post('/admin/add-doctor', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const { name, email, username, password, specialization, phone, timePerPatient } = req.body;
+
+        // Call the API endpoint to create the user
+        const bcrypt = require('bcryptjs');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newDoctor = await pool.query(
+            `INSERT INTO users (name, email, username, password, role, specialization, phone, time_per_patient) 
+             VALUES ($1, $2, $3, $4, 'doctor', $5, $6, $7) RETURNING id`,
+            [name, email, username, hashedPassword, specialization, phone || null, timePerPatient || 15]
+        );
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_doctor', { 
+            user: userResult.rows[0], 
+            success: 'Doctor added successfully!' 
+        });
+    } catch (error) {
+        console.error('Error adding doctor:', error);
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_doctor', { 
+            user: userResult.rows[0], 
+            error: error.message || 'Failed to add doctor. Email or username may already exist.' 
+        });
+    }
+});
+
+// Admin: Add Pharmacist page
+router.get('/admin/add-pharmacist', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_pharmacist', { user: userResult.rows[0] });
+    } catch (error) {
+        console.error('Error loading add pharmacist page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Admin: Add Pharmacist - POST handler
+router.post('/admin/add-pharmacist', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const { name, email, username, password, phone, pharmacy_note } = req.body;
+
+        const bcrypt = require('bcryptjs');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newPharmacist = await pool.query(
+            `INSERT INTO users (name, email, username, password, role, phone, pharmacy_note) 
+             VALUES ($1, $2, $3, $4, 'pharmacy', $5, $6) RETURNING id`,
+            [name, email, username, hashedPassword, phone || null, pharmacy_note || null]
+        );
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_pharmacist', { 
+            user: userResult.rows[0], 
+            success: 'Pharmacist added successfully!' 
+        });
+    } catch (error) {
+        console.error('Error adding pharmacist:', error);
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/add_pharmacist', { 
+            user: userResult.rows[0], 
+            error: error.message || 'Failed to add pharmacist. Email or username may already exist.' 
+        });
+    }
+});
+
+// Admin: Remove Doctor page
+router.get('/admin/remove-doctor', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const doctorsResult = await pool.query(
+            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+        );
+        
+        res.render('admin/remove_doctor', { 
+            user: userResult.rows[0],
+            doctors: doctorsResult.rows
+        });
+    } catch (error) {
+        console.error('Error loading remove doctor page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Admin: Remove Doctor - POST handler
+router.post('/admin/remove-doctor', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const { doctorId } = req.body;
+
+        // Delete the doctor
+        await pool.query('DELETE FROM users WHERE id = $1 AND role = $2', [doctorId, 'doctor']);
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const doctorsResult = await pool.query(
+            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+        );
+        
+        res.render('admin/remove_doctor', { 
+            user: userResult.rows[0],
+            doctors: doctorsResult.rows,
+            success: 'Doctor removed successfully!' 
+        });
+    } catch (error) {
+        console.error('Error removing doctor:', error);
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const doctorsResult = await pool.query(
+            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+        );
+        
+        res.render('admin/remove_doctor', { 
+            user: userResult.rows[0],
+            doctors: doctorsResult.rows,
+            error: 'Failed to remove doctor. They may have associated appointments.' 
+        });
+    }
+});
+
+// Admin: Remove Pharmacist page
+router.get('/admin/remove-pharmacist', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const pharmacistsResult = await pool.query(
+            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+        );
+        
+        res.render('admin/remove_pharmacist', { 
+            user: userResult.rows[0],
+            pharmacists: pharmacistsResult.rows
+        });
+    } catch (error) {
+        console.error('Error loading remove pharmacist page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Admin: Remove Pharmacist - POST handler
+router.post('/admin/remove-pharmacist', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+
+        const { pharmacistId } = req.body;
+
+        // Delete the pharmacist
+        await pool.query('DELETE FROM users WHERE id = $1 AND role = $2', [pharmacistId, 'pharmacy']);
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const pharmacistsResult = await pool.query(
+            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+        );
+        
+        res.render('admin/remove_pharmacist', { 
+            user: userResult.rows[0],
+            pharmacists: pharmacistsResult.rows,
+            success: 'Pharmacist removed successfully!' 
+        });
+    } catch (error) {
+        console.error('Error removing pharmacist:', error);
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        const pharmacistsResult = await pool.query(
+            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+        );
+        
+        res.render('admin/remove_pharmacist', { 
+            user: userResult.rows[0],
+            pharmacists: pharmacistsResult.rows,
+            error: 'Failed to remove pharmacist.' 
+        });
+    }
+});
+
+// Student: View My Appointments page
+router.get('/users/:id/appointments/view', auth, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        
+        if (req.user.id != userId) {
+            return res.status(403).render('error/403');
+        }
+
+        // Fetch appointments with doctor information
+        const appointmentsResult = await pool.query(
+            `SELECT 
+                a.id, 
+                a.date, 
+                a.time, 
+                a.reason, 
+                a.status,
+                u.name as doctor_name,
+                u.specialization
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_id = u.id
+             WHERE a.student_id = $1
+             ORDER BY a.date DESC, a.time DESC`,
+            [userId]
+        );
+
+        res.render('student/my_appointments', { 
+            userid: userId,
+            appointments: appointmentsResult.rows
+        });
+    } catch (error) {
+        console.error('Error loading my appointments page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Student: View My Orders page
+router.get('/users/:id/orders/view', auth, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        
+        if (req.user.id != userId) {
+            return res.status(403).render('error/403');
+        }
+
+        // Fetch orders with medicine details
+        const ordersResult = await pool.query(
+            `SELECT 
+                o.id,
+                o.status,
+                o.prescription_id,
+                o.ordered_at as created_at,
+                o.total
+             FROM orders o
+             WHERE o.student_id = $1
+             ORDER BY o.ordered_at DESC`,
+            [userId]
+        );
+
+        // For each order, fetch the medicines
+        const ordersWithMedicines = await Promise.all(
+            ordersResult.rows.map(async (order) => {
+                const medicinesResult = await pool.query(
+                    `SELECT 
+                        oi.medicine_id,
+                        oi.quantity,
+                        m.name,
+                        m.category
+                     FROM order_items oi
+                     LEFT JOIN medicines m ON oi.medicine_id = m.id
+                     WHERE oi.order_id = $1`,
+                    [order.id]
+                );
+                return {
+                    ...order,
+                    medicines: medicinesResult.rows
+                };
+            })
+        );
+
+        res.render('student/my_orders', { 
+            userid: userId,
+            orders: ordersWithMedicines
+        });
+    } catch (error) {
+        console.error('Error loading my orders page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Doctor: Set Availability page
+router.get('/doctors/:id/availability/create', auth, async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        
+        if (req.user.id != doctorId || req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        // Get doctor's time per patient
+        const doctorResult = await pool.query(
+            'SELECT time_per_patient FROM users WHERE id = $1',
+            [doctorId]
+        );
+
+        const timePerPatient = doctorResult.rows[0]?.time_per_patient || 15;
+        const today = new Date().toISOString().split('T')[0];
+
+        res.render('doctor/set_availability', { 
+            userid: doctorId,
+            timePerPatient,
+            today
+        });
+    } catch (error) {
+        console.error('Error loading set availability page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Doctor: View Schedule page
+router.get('/doctors/:id/availability/view', auth, async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        
+        if (req.user.id != doctorId || req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        // Fetch doctor's availability schedule
+        const scheduleResult = await pool.query(
+            `SELECT 
+                da.id,
+                da.date,
+                da.start_time,
+                da.end_time,
+                da.max_patients,
+                EXTRACT(EPOCH FROM (da.end_time - da.start_time))/60 as duration,
+                COALESCE(
+                    (SELECT COUNT(*) 
+                     FROM appointments a 
+                     WHERE a.doctor_id = da.doctor_id 
+                     AND a.date = da.date 
+                     AND a.time = da.start_time::VARCHAR 
+                     AND a.status != 'cancelled'),
+                    0
+                ) as booked_slots
+             FROM doctor_availability da
+             WHERE da.doctor_id = $1 AND da.date >= CURRENT_DATE
+             ORDER BY da.date, da.start_time`,
+            [doctorId]
+        );
+
+        // Calculate statistics
+        const totalSlots = scheduleResult.rows.length;
+        const totalBooked = scheduleResult.rows.reduce((sum, slot) => sum + parseInt(slot.booked_slots), 0);
+        const availableCapacity = scheduleResult.rows.reduce((sum, slot) => 
+            sum + (slot.max_patients - parseInt(slot.booked_slots)), 0
+        );
+
+        res.render('doctor/view_schedule', { 
+            userid: doctorId,
+            schedule: scheduleResult.rows,
+            totalSlots,
+            totalBooked,
+            availableCapacity
+        });
+    } catch (error) {
+        console.error('Error loading schedule page:', error);
+        res.status(500).render('error/500');
     }
 });
 

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Medicine Orders | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 30px;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+      font-weight: 600;
+      font-size: 1.8rem;
+    }
+
+    .orders-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .order-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s;
+    }
+
+    .order-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .order-id {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .order-status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status-ready {
+      background-color: #cfe2ff;
+      color: #084298;
+    }
+
+    .status-completed {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .status-cancelled {
+      background-color: #f8d7da;
+      color: #842029;
+    }
+
+    .order-details {
+      margin-bottom: 15px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .detail-label {
+      font-weight: 500;
+      color: #666;
+    }
+
+    .detail-value {
+      color: #333;
+    }
+
+    .medicines-list {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .medicines-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .medicine-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      color: #555;
+    }
+
+    .medicine-name {
+      font-weight: 500;
+    }
+
+    .medicine-quantity {
+      color: #666;
+    }
+
+    .no-orders {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+
+    .no-orders-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .no-orders-text {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .prescription-info {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #e7f3ff;
+      border-left: 3px solid #0d6efd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: #084298;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '' }) %>
+
+  <main class="main-content">
+    <div class="container">
+      <h1 class="page-title">My Medicine Orders</h1>
+
+      <% if (orders.length === 0) { %>
+        <div class="no-orders">
+          <div class="no-orders-icon">💊</div>
+          <div class="no-orders-text">No medicine orders found</div>
+          <a href="/users/<%= userid %>/orders" class="btn">Order Medicine</a>
+        </div>
+      <% } else { %>
+        <div class="orders-grid">
+          <% orders.forEach(order => { %>
+            <div class="order-card">
+              <div class="order-header">
+                <div class="order-id">Order #<%= order.id %></div>
+                <span class="order-status status-<%= order.status %>">
+                  <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
+                </span>
+              </div>
+
+              <div class="order-details">
+                <div class="detail-row">
+                  <span class="detail-label">📅 Order Date:</span>
+                  <span class="detail-value">
+                    <%= new Date(order.created_at).toLocaleDateString('en-IN', { 
+                      day: 'numeric', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    }) %>
+                  </span>
+                </div>
+
+                <div class="detail-row">
+                  <span class="detail-label">⏰ Order Time:</span>
+                  <span class="detail-value">
+                    <%= new Date(order.created_at).toLocaleTimeString('en-IN', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    }) %>
+                  </span>
+                </div>
+
+                <% if (order.prescription_id) { %>
+                  <div class="detail-row">
+                    <span class="detail-label">📋 Prescription:</span>
+                    <span class="detail-value">#<%= order.prescription_id %></span>
+                  </div>
+                <% } %>
+
+                <% if (order.status === 'ready' || order.status === 'completed') { %>
+                  <div class="detail-row">
+                    <span class="detail-label">✅ Ready for Pickup:</span>
+                    <span class="detail-value">Campus Pharmacy</span>
+                  </div>
+                <% } %>
+              </div>
+
+              <% if (order.medicines && order.medicines.length > 0) { %>
+                <div class="medicines-list">
+                  <div class="medicines-title">Medicines Ordered:</div>
+                  <% order.medicines.forEach(med => { %>
+                    <div class="medicine-item">
+                      <span class="medicine-name"><%= med.name %></span>
+                      <span class="medicine-quantity">Qty: <%= med.quantity %></span>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } %>
+
+              <% if (order.prescription_id) { %>
+                <div class="prescription-info">
+                  ℹ️ This order is based on prescription #<%= order.prescription_id %>
+                </div>
+              <% } %>
+
+              <% if (order.status === 'pending') { %>
+                <div class="prescription-info" style="background-color: #fff3cd; border-color: #ffc107; color: #856404;">
+                  ⏳ Your order is being processed. You'll be notified when it's ready.
+                </div>
+              <% } else if (order.status === 'ready') { %>
+                <div class="prescription-info" style="background-color: #d1e7dd; border-color: #0f5132; color: #0f5132;">
+                  ✅ Your order is ready! Please visit the campus pharmacy to collect it.
+                </div>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

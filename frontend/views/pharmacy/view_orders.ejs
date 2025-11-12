@@ -1,45 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Orders</title>
   <link rel="stylesheet" href="/css/style.css" />
   <style>
-    .container {max-width:900px;margin:30px auto;padding:20px;}
-    .title {text-align:center;font-size:1.8rem;margin-bottom:24px;}
-    .card {background:#f0f0f0;padding:18px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;}
-    .row {display:flex;margin-bottom:10px;}
-    .row strong {width:170px;flex-shrink:0;}
-    .action {text-align:center;margin-top:12px;}
-    .btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;display:inline-block;}
-    .back {display:inline-block;margin-top:20px;}
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #f0f0f0;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .row strong {
+      width: 170px;
+      flex-shrink: 0;
+    }
+
+    .action {
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .back {
+      display: inline-block;
+      margin-top: 20px;
+    }
   </style>
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/users/' + userid + '" class="btn">DASHBOARD</a>' }) %>
-  <main class="main-content">
-    <div class="container">
-      <h1 class="title">Orders</h1>
-      <% if ((orders||[]).length) { %>
-        <% orders.forEach(o => { %>
-          <div class="card">
-            <div class="row"><strong>Order ID:</strong> <span><%= o.id %></span></div>
-            <div class="row"><strong>Name:</strong> <span><%= o.student_name %></span></div>
-            <div class="row"><strong>Phone No.:</strong> <span><%= o.phone %></span></div>
-            <div class="row"><strong>Order Details:</strong> <span><%= o.order_details %></span></div>
-            <form action="/complete-order" method="POST" class="action">
-              <input type="hidden" name="order_id" value="<%= o.id %>" />
-              <button type="submit" class="btn">Completed</button>
-            </form>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <p>No pending orders.</p>
-      <% } %>
-      <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+  <%- include('../partials/header', { navHtml: '<a href="/users/' + userid + '" class="btn">DASHBOARD</a>' }) %>
+    <main class="main-content">
+      <div class="container">
+        <h1 class="title">Orders</h1>
+        <% if ((orders||[]).length) { %>
+          <% orders.forEach(o=> { %>
+            <div class="card">
+              <div class="row"><strong>Order ID:</strong> <span>
+                  <%= o.id %>
+                </span></div>
+              <div class="row"><strong>Name:</strong> <span>
+                  <%= o.student_name %>
+                </span></div>
+              <div class="row"><strong>Phone No.:</strong> <span>
+                  <%= o.phone %>
+                </span></div>
+              <div class="row"><strong>Order Details:</strong> <span>
+                  <%= o.order_details %>
+                </span></div>
+              <form action="/complete-order" method="POST" class="action">
+                <input type="hidden" name="order_id" value="<%= o.id %>" />
+                <button type="submit" class="btn">Completed</button>
+              </form>
+            </div>
+            <% }) %>
+              <% } else { %>
+                <p>No pending orders.</p>
+                <% } %>
+                  <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

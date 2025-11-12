@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remove Doctor | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 30px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+      font-weight: 600;
+      font-size: 1.8rem;
+    }
+
+    .alert {
+      padding: 12px 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+
+    .alert-success {
+      background-color: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    .alert-error {
+      background-color: #f8d7da;
+      color: #842029;
+      border: 1px solid #f5c2c7;
+    }
+
+    .doctors-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .doctors-table th,
+    .doctors-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .doctors-table th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .doctors-table tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    .btn-delete {
+      background-color: #dc3545;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-delete:hover {
+      background-color: #bb2d3b;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: #0d6efd;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .no-doctors {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .modal-buttons button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn-confirm {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .btn-confirm:hover {
+      background-color: #bb2d3b;
+    }
+
+    .btn-cancel {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .btn-cancel:hover {
+      background-color: #5a6268;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '' }) %>
+
+  <main class="main-content">
+    <div class="container">
+      <h1 class="page-title">Remove Doctor</h1>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-error">
+          <%= error %>
+        </div>
+      <% } %>
+
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert alert-success">
+          <%= success %>
+        </div>
+      <% } %>
+
+      <% if (doctors.length === 0) { %>
+        <div class="no-doctors">
+          No doctors found in the system.
+        </div>
+      <% } else { %>
+        <table class="doctors-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Specialization</th>
+              <th>Phone</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% doctors.forEach(doctor => { %>
+              <tr>
+                <td><%= doctor.name %></td>
+                <td><%= doctor.email %></td>
+                <td><%= doctor.specialization || 'N/A' %></td>
+                <td><%= doctor.phone || 'N/A' %></td>
+                <td>
+                  <button 
+                    class="btn-delete" 
+                    data-id="<%= doctor.id %>"
+                    data-name="<%= doctor.name %>"
+                    onclick="confirmDelete(this.dataset.id, this.dataset.name)"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+
+      <a href="/users/<%= user.id %>" class="back-link">← Back to Dashboard</a>
+    </div>
+  </main>
+
+  <!-- Confirmation Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <h2>Confirm Deletion</h2>
+      <p id="confirmMessage"></p>
+      <div class="modal-buttons">
+        <button class="btn-confirm" onclick="deleteDoctor()">Yes, Remove</button>
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let deleteId = null;
+
+    function confirmDelete(id, name) {
+      deleteId = id;
+      document.getElementById('confirmMessage').textContent = 
+        `Are you sure you want to remove Dr. ${name}? This action cannot be undone.`;
+      document.getElementById('deleteModal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('deleteModal').style.display = 'none';
+      deleteId = null;
+    }
+
+    function deleteDoctor() {
+      if (deleteId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/remove-doctor';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'doctorId';
+        input.value = deleteId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('deleteModal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    }
+  </script>
+
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

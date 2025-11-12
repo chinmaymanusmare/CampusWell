@@ -103,6 +103,16 @@ exports.webSignup = async (req, res) => {
 
 // Web-based logout
 exports.webLogout = (req, res) => {
-  res.clearCookie('token');
-  res.redirect('/');
+  // Clear the token cookie with all the same options used when setting it
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'lax'
+  });
+  
+  // Set cache control headers to prevent caching
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
+  res.redirect('/login');
 };

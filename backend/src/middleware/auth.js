@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {
+  // Set no-cache headers to prevent accessing protected pages after logout
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
   // Check for token in Authorization header (for API requests)
   const authHeader = req.headers.authorization;
   let token = null;

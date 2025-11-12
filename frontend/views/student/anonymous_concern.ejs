@@ -1,43 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Past Concerns</title>
   <link rel="stylesheet" href="/css/style.css" />
   <style>
-    .container {max-width:900px;margin:30px auto;padding:20px;}
-    .header-row {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:2px solid #333;padding-bottom:10px;}
-    .title {font-size:1.8rem;font-weight:600;}
-    .btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;display:inline-block;}
-    .card {background:#f0f0f0;padding:18px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;}
-    .item {margin-bottom:10px;}
-    .pending {color:#777;font-style:italic;}
-    .back {display:inline-block;margin-top:20px;}
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+    }
+
+    .title {
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+
+    .card {
+      background: #f0f0f0;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .item {
+      margin-bottom: 10px;
+    }
+
+    .pending {
+      color: #777;
+      font-style: italic;
+    }
+
+    .back {
+      display: inline-block;
+      margin-top: 20px;
+    }
   </style>
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
-  <main class="main-content">
-    <div class="container">
-      <div class="header-row">
-        <h1 class="title">Past Concerns</h1>
-        <a href="/concerns/newconcern/<%= userid %>" class="btn">New Post</a>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+    <main class="main-content">
+      <div class="container">
+        <div class="header-row">
+          <h1 class="title">Past Concerns</h1>
+          <a href="/concerns/newconcern/<%= userid %>" class="btn">New Post</a>
+        </div>
+        <% if ((concerns||[]).length) { %>
+          <% concerns.forEach(c=> { %>
+            <div class="card">
+              <div class="item"><strong>Post:</strong>
+                <%= c.message %>
+              </div>
+              <div class="item"><strong>Reply:</strong> <% if (c.response) { %>
+                  <%= c.response %>
+                    <% } else { %><span class="pending">Waiting for reply...</span>
+                      <% } %>
+              </div>
+              <div class="item"><strong>Replied By:</strong>
+                <%= c.replied_by_name || '-' %>
+              </div>
+            </div>
+            <% }) %>
+              <% } else { %>
+                <p>No past concerns found.</p>
+                <% } %>
+                  <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
       </div>
-      <% if ((concerns||[]).length) { %>
-        <% concerns.forEach(c => { %>
-          <div class="card">
-            <div class="item"><strong>Post:</strong> <%= c.message %></div>
-            <div class="item"><strong>Reply:</strong> <% if (c.response) { %><%= c.response %><% } else { %><span class="pending">Waiting for reply...</span><% } %></div>
-            <div class="item"><strong>Replied By:</strong> <%= c.replied_by_name || '-' %></div>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <p>No past concerns found.</p>
-      <% } %>
-      <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>

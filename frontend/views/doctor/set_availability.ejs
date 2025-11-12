@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Availability - Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .availability-form-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .availability-form-container h2 {
+      color: #2c3e50;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .form-section {
+      margin-bottom: 2rem;
+    }
+
+    .form-section h3 {
+      color: #34495e;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 0.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .info-box {
+      background: #e8f4f8;
+      border-left: 4px solid #3498db;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+    }
+
+    .info-box p {
+      margin: 0.5rem 0;
+      color: #2c3e50;
+      font-size: 0.95rem;
+    }
+
+    .days-selection {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .day-checkbox {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem;
+      background: #f8f9fa;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .day-checkbox:hover {
+      background: #e8f4f8;
+      border-color: #3498db;
+    }
+
+    .day-checkbox input[type="checkbox"] {
+      width: auto;
+      margin-right: 0.5rem;
+      cursor: pointer;
+    }
+
+    .day-checkbox input[type="checkbox"]:checked + span,
+    .day-checkbox:has(input[type="checkbox"]:checked) {
+      background: #e8f4f8;
+      border-color: #3498db;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #3498db;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .success-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .error-message {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  
+  <main class="main-content">
+    <div class="availability-form-container">
+  <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+      
+      <h2>Set Your Availability</h2>
+
+      <div id="successMessage" class="success-message"></div>
+      <div id="errorMessage" class="error-message"></div>
+
+      <div class="info-box">
+        <p><strong>ℹ️ Information:</strong></p>
+        <p>• Your time per patient: <strong><%= timePerPatient %> minutes</strong></p>
+        <p>• This will determine how many appointments you can take per hour</p>
+        <p>• Select date and time slots when you'll be available for consultations</p>
+      </div>
+
+      <form id="availabilityForm">
+        <input type="hidden" name="doctor_id" value="<%= userid %>">
+        
+        <div class="form-section">
+          <h3>Date Selection</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="start_date">Start Date *</label>
+              <input type="date" id="start_date" name="start_date" required min="<%= today %>">
+            </div>
+            <div class="form-group">
+              <label for="end_date">End Date *</label>
+              <input type="date" id="end_date" name="end_date" required min="<%= today %>">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Select Days of Week *</label>
+            <div class="days-selection">
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="0"> Sunday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="1"> Monday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="2"> Tuesday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="3"> Wednesday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="4"> Thursday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="5"> Friday
+              </label>
+              <label class="day-checkbox">
+                <input type="checkbox" name="days" value="6"> Saturday
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Time Slot</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="start_time">Start Time *</label>
+              <input type="time" id="start_time" name="start_time" required>
+            </div>
+            <div class="form-group">
+              <label for="end_time">End Time *</label>
+              <input type="time" id="end_time" name="end_time" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Capacity</h3>
+          <div class="form-group">
+            <label for="max_patients">Maximum Patients (Optional)</label>
+            <input type="number" id="max_patients" name="max_patients" min="1" 
+                   placeholder="Leave empty to auto-calculate based on time per patient">
+            <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+              If not specified, will be calculated as: (Duration in minutes) ÷ (Time per patient)
+            </small>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">Create Availability Slots</button>
+      </form>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    const timePerPatient = parseInt('<%= timePerPatient %>');
+    const doctorId = parseInt('<%= userid %>');
+
+    // Update end date minimum when start date changes
+    document.getElementById('start_date').addEventListener('change', function() {
+      const endDateInput = document.getElementById('end_date');
+      endDateInput.min = this.value;
+      if (endDateInput.value && endDateInput.value < this.value) {
+        endDateInput.value = this.value;
+      }
+    });
+
+    // Auto-calculate max patients when time slot changes (optional)
+    document.getElementById('start_time').addEventListener('change', updateMaxPatientsPlaceholder);
+    document.getElementById('end_time').addEventListener('change', updateMaxPatientsPlaceholder);
+
+    function updateMaxPatientsPlaceholder() {
+      const startTime = document.getElementById('start_time').value;
+      const endTime = document.getElementById('end_time').value;
+      const maxPatientsInput = document.getElementById('max_patients');
+      
+      if (startTime && endTime) {
+        const start = new Date('2000-01-01 ' + startTime);
+        const end = new Date('2000-01-01 ' + endTime);
+        const durationMinutes = (end - start) / (1000 * 60);
+        
+        if (durationMinutes > 0) {
+          const calculatedMax = Math.floor(durationMinutes / timePerPatient);
+          maxPatientsInput.placeholder = `Auto-calculated: ${calculatedMax} patients`;
+        }
+      }
+    }
+
+    // Form submission
+    document.getElementById('availabilityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Get selected days
+      const selectedDays = Array.from(document.querySelectorAll('input[name="days"]:checked'))
+        .map(cb => parseInt(cb.value));
+      
+      if (selectedDays.length === 0) {
+        document.getElementById('errorMessage').textContent = 'Please select at least one day of the week';
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+        return;
+      }
+
+      // Validate time slot
+      const startTime = document.getElementById('start_time').value;
+      const endTime = document.getElementById('end_time').value;
+      if (startTime >= endTime) {
+        document.getElementById('errorMessage').textContent = 'End time must be after start time';
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+        return;
+      }
+
+      // Calculate max patients if not provided
+      const maxPatientsInput = document.getElementById('max_patients').value;
+      let maxPatients = null;
+      if (maxPatientsInput && maxPatientsInput.trim() !== '') {
+        maxPatients = parseInt(maxPatientsInput);
+      } else {
+        // Auto-calculate
+        const start = new Date('2000-01-01 ' + startTime);
+        const end = new Date('2000-01-01 ' + endTime);
+        const durationMinutes = (end - start) / (1000 * 60);
+        maxPatients = Math.floor(durationMinutes / timePerPatient);
+      }
+
+      // Generate dates based on selected days
+      const startDate = new Date(document.getElementById('start_date').value);
+      const endDate = new Date(document.getElementById('end_date').value);
+      const datesToCreate = [];
+      
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (selectedDays.includes(d.getDay())) {
+          const yy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          datesToCreate.push(`${yy}-${mm}-${dd}`);
+        }
+      }
+
+      if (datesToCreate.length === 0) {
+        document.getElementById('errorMessage').textContent = 'No dates match the selected days in the date range';
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+        return;
+      }
+
+      // Create availability for all dates
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      for (const date of datesToCreate) {
+        try {
+          const response = await fetch('/availability', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              doctor_id: doctorId,
+              date: date,
+              start_time: startTime,
+              end_time: endTime,
+              max_patients: maxPatients
+            })
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+            const data = await response.json();
+            errors.push(`${date}: ${data.message || 'Failed'}`);
+          }
+        } catch (error) {
+          failCount++;
+          errors.push(`${date}: ${error.message}`);
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        let message = `Successfully created ${successCount} availability slot(s)!`;
+        if (failCount > 0) {
+          message += ` (${failCount} failed)`;
+        }
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successMessage').style.display = 'block';
+        
+        if (failCount === 0) {
+          document.getElementById('errorMessage').style.display = 'none';
+          // Reset form
+          document.getElementById('availabilityForm').reset();
+        } else {
+          document.getElementById('errorMessage').textContent = 'Some slots failed: ' + errors.join(', ');
+          document.getElementById('errorMessage').style.display = 'block';
+        }
+        
+        // Hide success message after 5 seconds
+        setTimeout(() => {
+          document.getElementById('successMessage').style.display = 'none';
+        }, 5000);
+      } else {
+        document.getElementById('errorMessage').textContent = 'All slots failed: ' + errors.join(', ');
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+
+</html>

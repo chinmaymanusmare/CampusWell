@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - Page Not Found | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .error-container {
+      max-width: 600px;
+      margin: 80px auto;
+      padding: 40px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: 700;
+      color: #0d6efd;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .error-title {
+      font-size: 1.8rem;
+      color: #333;
+      margin: 20px 0 15px 0;
+      font-weight: 600;
+    }
+
+    .error-message {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .error-actions .btn {
+      min-width: 150px;
+    }
+
+    .error-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+    }
+
+    .suggestions {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .suggestions h3 {
+      font-size: 1.2rem;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .suggestions ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .suggestions li {
+      padding: 8px 0;
+      color: #555;
+    }
+
+    .suggestions a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+
+    .suggestions a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header', { navHtml: '' }) %>
+
+  <main class="main-content">
+    <div class="error-container">
+      <div class="error-icon">🔍</div>
+      <h1 class="error-code">404</h1>
+      <h2 class="error-title">Page Not Found</h2>
+      <p class="error-message">
+        Oops! The page you're looking for doesn't exist. It might have been moved or deleted.
+      </p>
+
+      <div class="error-actions">
+        <a href="/" class="btn">Go to Home</a>
+        <button onclick="history.back()" class="btn" style="background: #6c757d;">Go Back</button>
+      </div>
+
+      <div class="suggestions">
+        <h3>Quick Links</h3>
+        <ul>
+          <li><a href="/login">Login</a> - Sign in to your account</li>
+          <li><a href="/signup">Sign Up</a> - Create a new account</li>
+          <li><a href="/">Home</a> - Return to homepage</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

@@ -7,6 +7,6 @@
     </div>
   </div>
   <nav class="nav-buttons">
-    <%- navHtml || '' %>
+  <%- typeof navHtml !== 'undefined' ? navHtml : '' %>
   </nav>
 </header>

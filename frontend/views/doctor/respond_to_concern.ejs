@@ -1,45 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Anonymous Concerns</title>
   <link rel="stylesheet" href="/css/style.css" />
   <style>
-    .container {max-width:900px;margin:30px auto;padding:20px;}
-    .title {text-align:center;font-size:1.8rem;margin-bottom:24px;}
-    .card {background:#f0f0f0;padding:18px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;}
-    .problem {margin-bottom:14px;}
-    .reply-form {display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
-    .reply-form strong {flex:0 0 70px;}
-    .reply-form input {flex:1;min-width:260px;padding:10px;border:1px solid #aaa;border-radius:5px;}
-    .btn-post {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;}
-    .btn {background:#0d6efd;color:#fff;text-decoration:none;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer;display:inline-block;margin-top:20px;}
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #f0f0f0;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .problem {
+      margin-bottom: 14px;
+    }
+
+    .reply-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .reply-form strong {
+      flex: 0 0 70px;
+    }
+
+    .reply-form input {
+      flex: 1;
+      min-width: 260px;
+      padding: 10px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+    }
+
+    .btn-post {
+      background: #0d6efd;
+      color: #fff;
+      text-decoration: none;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
-  <%- include('partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
-  <main class="main-content">
-    <div class="container">
-      <h1 class="title">Anonymous Concerns</h1>
-      <% if ((concerns||[]).length) { %>
-        <% concerns.forEach(c => { %>
-          <div class="card">
-            <div class="problem"><strong>Problem:</strong> (<%= c.category %>) - <%= c.message %></div>
-            <form action="/respond-concerns" method="POST" class="reply-form">
-              <input type="hidden" name="concern_id" value="<%= c.id %>" />
-              <strong>Reply:</strong>
-              <input type="text" name="response" placeholder="Reply here" required />
-              <button type="submit" class="btn-post">Post</button>
-            </form>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <p>No pending concerns.</p>
-      <% } %>
-      <a href="/users/<%= userid %>" class="btn">Back to Dashboard</a>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+    <main class="main-content">
+      <div class="container">
+        <h1 class="title">Anonymous Concerns</h1>
+        <% if ((concerns||[]).length) { %>
+          <% concerns.forEach(c=> { %>
+            <div class="card">
+              <div class="problem"><strong>Problem:</strong> (<%= c.category %>) - <%= c.message %>
+              </div>
+              <form action="/respond-concerns" method="POST" class="reply-form">
+                <input type="hidden" name="concern_id" value="<%= c.id %>" />
+                <strong>Reply:</strong>
+                <input type="text" name="response" placeholder="Reply here" required />
+                <button type="submit" class="btn-post">Post</button>
+              </form>
+            </div>
+            <% }) %>
+              <% } else { %>
+                <p>No pending concerns.</p>
+                <% } %>
+                  <a href="/users/<%= userid %>" class="btn">Back to Dashboard</a>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
 </body>
+
 </html>
