@@ -1,4 +1,5 @@
 <header class="header">
+  <a href="/">
   <div class="logo-container">
     <img src="/images/LOGO.png" alt="Campus Wellness Logo" class="logo-img">
     <div class="logo-text">
@@ -6,6 +7,7 @@
       <span class="logo-text-sub">IIT DHARWAD</span>
     </div>
   </div>
+  </a>
   <nav class="nav-buttons">
   <%- typeof navHtml !== 'undefined' ? navHtml : '' %>
   <% 
@@ -14,7 +16,7 @@
       : (typeof user !== 'undefined' && user && user.id ? user.id : null);
   %>
   <% if (__uid) { %>
-    <a href="/users/<%= __uid %>" class="btn">DASHBOARD</a>
+    <a href="/users/<%= __uid %>" class="btn" id="dash">DASHBOARD</a>
   <% } %>
   <% if (__uid) { %>
   <a href="/logout" class="btn">LOG OUT</a>

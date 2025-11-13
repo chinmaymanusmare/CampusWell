@@ -26,6 +26,9 @@ body {
     background-color: #ffffff;
     border-bottom: 1px solid #eaeaea;
 }
+.header a{
+    text-decoration: none;
+}
 
 .logo-container {
     display: flex;

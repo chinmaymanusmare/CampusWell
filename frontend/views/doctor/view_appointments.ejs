@@ -333,7 +333,7 @@
                   <th>Student Name</th>
                   <th>Date</th>
                   <th>Time</th>
-                  <th>Reason</th>
+                  <!-- <th>Reason</th> -->
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -349,7 +349,7 @@
                       day: 'numeric' 
                     }) %></td>
                     <td><%= a.time %></td>
-                    <td><%= a.reason || 'N/A' %></td>
+                    <!-- <td><%= a.reason || 'N/A' %></td> -->
                     <td>
                       <span class="status-badge status-<%= a.status || 'scheduled' %>">
                         <%= (a.status || 'scheduled').toUpperCase() %>

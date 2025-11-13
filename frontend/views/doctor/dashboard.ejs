@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Doctor Dashboard - Campus Wellness</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    #dash{
+      visibility:hidden;
+    }
+  </style>
 </head>
 
 <body>
@@ -20,7 +25,7 @@
           <a href="/doctors/<%= user.id %>/availability/view" class="dashboard-card">VIEW SCHEDULE</a>
           <a href="/referrals/doctor/<%= user.id %>" class="dashboard-card">APPROVE REFERRALS</a>
           <a href="/concerns/doctor/<%= user.id %>" class="dashboard-card">RESPOND TO CONCERNS</a>
-          <a href="/records/<%= user.id %>/edit" class="dashboard-card">UPDATE PRESCRIPTIONS</a>
+          <!-- <a href="/records/<%= user.id %>/edit" class="dashboard-card">UPDATE PRESCRIPTIONS</a> -->
         </div>
       </div>
     </main>
