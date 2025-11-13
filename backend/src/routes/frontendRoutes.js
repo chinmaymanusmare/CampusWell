@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
+const bcrypt = require('bcryptjs');
 
 // Home page
 router.get('/', (req, res) => {
@@ -18,6 +19,123 @@ router.get('/login', (req, res) => {
 // Signup page
 router.get('/signup', (req, res) => {
     res.render('auth/signup');
+});
+
+// Profile - GET (self)
+router.get('/profile', auth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await pool.query('SELECT id, name, email, role, roll_number, specialization, time_per_patient FROM users WHERE id = $1', [userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).render('error/404');
+        }
+        const user = result.rows[0];
+        res.render('shared/profile', { user, success: null, error: null });
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Profile - POST (update self)
+router.post('/profile', auth, async (req, res) => {
+    const userId = req.user.id;
+    const role = req.user.role;
+    const { name, email } = req.body;
+    let roll_no = req.body.roll_no;
+    let specialization = req.body.specialization;
+    let timePerPatient = req.body.timePerPatient;
+
+    try {
+        const current = await pool.query('SELECT id, name, email, role, roll_number, specialization, time_per_patient FROM users WHERE id = $1', [userId]);
+        if (current.rows.length === 0) {
+            return res.status(404).render('error/404');
+        }
+
+        // Basic validation
+        if (!name || !email) {
+            return res.render('shared/profile', { user: current.rows[0], error: 'Name and Email are required.', success: null });
+        }
+
+        if (role === 'doctor') {
+            // Normalize timePerPatient
+            if (timePerPatient !== undefined && timePerPatient !== '') {
+                const tpp = parseInt(timePerPatient, 10);
+                if (!Number.isInteger(tpp) || tpp <= 0) {
+                    return res.render('shared/profile', { user: current.rows[0], error: 'Time per patient must be a positive integer.', success: null });
+                }
+                timePerPatient = tpp;
+            } else {
+                timePerPatient = null;
+            }
+
+            const update = await pool.query(
+                `UPDATE users SET name = $1, email = $2, specialization = $3, time_per_patient = $4 WHERE id = $5
+                 RETURNING id, name, email, role, roll_number, specialization, time_per_patient`,
+                [name, email, specialization || null, timePerPatient, userId]
+            );
+            return res.render('shared/profile', { user: update.rows[0], success: 'Profile updated successfully.', error: null });
+        }
+
+        if (role === 'student') {
+            const update = await pool.query(
+                `UPDATE users SET name = $1, email = $2, roll_number = $3 WHERE id = $4
+                 RETURNING id, name, email, role, roll_number, specialization, time_per_patient`,
+                [name, email, roll_no || null, userId]
+            );
+            return res.render('shared/profile', { user: update.rows[0], success: 'Profile updated successfully.', error: null });
+        }
+
+        // Other roles (admin, pharmacist): name + email
+        const update = await pool.query(
+            `UPDATE users SET name = $1, email = $2 WHERE id = $3
+             RETURNING id, name, email, role, roll_number, specialization, time_per_patient`,
+            [name, email, userId]
+        );
+        return res.render('shared/profile', { user: update.rows[0], success: 'Profile updated successfully.', error: null });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        const fallback = await pool.query('SELECT id, name, email, role, roll_number, specialization, time_per_patient FROM users WHERE id = $1', [userId]);
+        res.render('shared/profile', { user: fallback.rows[0], error: 'Failed to update profile. Please try again.', success: null });
+    }
+});
+// Generic Change Password - GET (for any authenticated user)
+router.get('/change-password', auth, async (req, res) => {
+    try {
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('shared/change-password', { user: userResult.rows[0], success: null, error: null });
+    } catch (error) {
+        console.error('Error loading change-password page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Generic Change Password - POST (self-service)
+router.post('/change-password', auth, async (req, res) => {
+    try {
+        const { oldpassword, newpassword } = req.body;
+        const userId = req.user.id;
+
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if (userResult.rows.length === 0) {
+            return res.render('shared/change-password', { user: null, error: 'User not found.', success: null });
+        }
+
+        const user = userResult.rows[0];
+        const match = await bcrypt.compare(oldpassword, user.password);
+        if (!match) {
+            return res.render('shared/change-password', { user, error: 'Current password is incorrect.', success: null });
+        }
+
+        const hashedPassword = await bcrypt.hash(newpassword, 10);
+        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
+
+        res.render('shared/change-password', { user, success: 'Password updated successfully!', error: null });
+    } catch (error) {
+        console.error('Error updating password:', error);
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('shared/change-password', { user: userResult.rows[0], error: 'Failed to update password. Please try again.', success: null });
+    }
 });
 
 // Student dashboard - protected route
@@ -941,6 +1059,8 @@ router.post('/pharmacy/orders/:id/status', auth, async (req, res) => {
     if (action === 'ready' && currentStatus === 'pending') nextStatus = 'ready';
     // Map 'completed' action to valid DB status 'collected'
     if (action === 'completed' && (currentStatus === 'ready' || currentStatus === 'pending')) nextStatus = 'collected';
+    // Allow cancelling pending orders
+    if (action === 'cancelled' && currentStatus === 'pending') nextStatus = 'cancelled';
 
         if (!nextStatus) {
             return res.redirect(`/pharmacy/orders/${pharmacistId}?success=invalid_transition`);
@@ -948,7 +1068,7 @@ router.post('/pharmacy/orders/:id/status', auth, async (req, res) => {
 
         await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [nextStatus, order_id]);
 
-    const success = nextStatus === 'ready' ? 'ready' : 'completed';
+    const success = nextStatus === 'ready' ? 'ready' : (nextStatus === 'collected' ? 'completed' : 'cancelled');
         res.redirect(`/pharmacy/orders/${pharmacistId}?success=${success}`);
     } catch (error) {
         console.error('Error updating order status:', error);
@@ -1032,6 +1152,124 @@ router.post('/pharmacy/stocks/:id/update', auth, async (req, res) => {
 });
 
 // Admin: Add Doctor page
+router.get('/admin/change-password', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/change-password', { 
+            user: userResult.rows[0],
+            success: null,
+            error: null
+        });
+    } catch (error) {
+        console.error('Error loading change password page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+// Admin: Change Password - POST
+router.post('/admin/change-password', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+        
+        const { email, oldpassword, newpassword } = req.body;
+
+        // Fetch user by email
+        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userResult.rows.length === 0) {
+            const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+            return res.render('admin/change-password', { 
+                user: adminResult.rows[0], 
+                error: 'User not found with that email.',
+                success: null
+            });
+        }
+        
+        const user = userResult.rows[0];
+
+        // Verify old password
+        const match = await bcrypt.compare(oldpassword, user.password);
+        if (!match) {
+            const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+            return res.render('admin/change-password', { 
+                user: adminResult.rows[0], 
+                error: 'Old password is incorrect.',
+                success: null
+            });
+        }
+
+        // Hash new password and update
+        const hashedPassword = await bcrypt.hash(newpassword, 10);
+        await pool.query('UPDATE users SET password = $1 WHERE email = $2', [hashedPassword, email]);
+        
+        // Fetch admin data again to pass to template
+        const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/change-password', { 
+            user: adminResult.rows[0], 
+            success: 'Password changed successfully!',
+            error: null
+        });
+
+    } catch (error) {
+        console.error('Error changing password:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body
+        });
+        const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/change-password', { 
+            user: adminResult.rows[0], 
+            error: `Failed to change password: ${error.message}`,
+            success: null
+        });
+    }
+});
+
+// Admin: Reset any user's password to default 'start123'
+router.get('/admin/reset-password', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+        const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/reset-password', { user: adminResult.rows[0], success: null, error: null });
+    } catch (error) {
+        console.error('Error loading reset-password page:', error);
+        res.status(500).render('error/500');
+    }
+});
+
+router.post('/admin/reset-password', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).render('error/403');
+        }
+        const { email } = req.body;
+        if (!email) {
+            const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+            return res.render('admin/reset-password', { user: adminResult.rows[0], success: null, error: 'Email is required.' });
+        }
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (userResult.rows.length === 0) {
+            const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+            return res.render('admin/reset-password', { user: adminResult.rows[0], success: null, error: 'No user found with that email.' });
+        }
+        const defaultPassHash = await bcrypt.hash('start123', 10);
+        await pool.query('UPDATE users SET password = $1 WHERE email = $2', [defaultPassHash, email]);
+        const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/reset-password', { user: adminResult.rows[0], success: 'Password reset to start123.', error: null });
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+        res.render('admin/reset-password', { user: adminResult.rows[0], success: null, error: 'Failed to reset password. Please try again.' });
+    }
+});
+
 router.get('/admin/add-doctor', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -1272,13 +1510,57 @@ router.get('/users/:id/appointments/view', auth, async (req, res) => {
             [userId]
         );
 
+        const success = req.query.success || null;
+        const error = req.query.error || null;
+
         res.render('student/my_appointments', { 
             userid: userId,
-            appointments: appointmentsResult.rows
+            appointments: appointmentsResult.rows,
+            success,
+            error
         });
     } catch (error) {
         console.error('Error loading my appointments page:', error);
         res.status(500).render('error/500');
+    }
+});
+
+// Student: Delete (Cancel) an appointment
+router.post('/users/:id/appointments/:appointmentId/delete', auth, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const appointmentId = req.params.appointmentId;
+
+        if (req.user.id != userId) {
+            return res.status(403).render('error/403');
+        }
+
+        // Ensure the appointment belongs to the student and is not completed
+        const apptResult = await pool.query(
+            `SELECT id, status, date FROM appointments WHERE id = $1 AND student_id = $2`,
+            [appointmentId, userId]
+        );
+
+        if (apptResult.rows.length === 0) {
+            return res.redirect(`/users/${userId}/appointments/view?error=Appointment%20not%20found`);
+        }
+
+        const appt = apptResult.rows[0];
+        if (appt.status !== 'scheduled') {
+            return res.redirect(`/users/${userId}/appointments/view?error=Only%20scheduled%20appointments%20can%20be%20deleted`);
+        }
+
+        // Soft delete: mark as cancelled to retain history
+        await pool.query(
+            `UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND student_id = $2`,
+            [appointmentId, userId]
+        );
+
+        return res.redirect(`/users/${userId}/appointments/view?success=Appointment%20deleted`);
+    } catch (err) {
+        console.error('Error deleting appointment:', err);
+        const userId = req.params.id;
+        return res.redirect(`/users/${userId}/appointments/view?error=Failed%20to%20delete%20appointment`);
     }
 });
 

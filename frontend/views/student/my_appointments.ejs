@@ -189,6 +189,17 @@
     <div class="container">
       <h1 class="page-title">My Appointments</h1>
 
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-error" style="margin-bottom:16px;background:#f8d7da;color:#842029;border:1px solid #f5c2c7;padding:10px;border-radius:6px;">
+          <%= error %>
+        </div>
+      <% } %>
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert alert-success" style="margin-bottom:16px;background:#d1e7dd;color:#0f5132;border:1px solid #badbcc;padding:10px;border-radius:6px;">
+          <%= success %>
+        </div>
+      <% } %>
+
       <div class="tabs">
         <button class="tab active" onclick="showTab('upcoming')">
           Upcoming
@@ -255,6 +266,10 @@
                     <div class="reason-text"><%= apt.reason %></div>
                   </div>
                 <% } %>
+
+                <form action="/users/<%= userid %>/appointments/<%= apt.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this appointment?');" style="margin-top:12px;">
+                  <button type="submit" class="btn" style="background:#dc3545;border-color:#dc3545;">Delete Appointment</button>
+                </form>
               </div>
             <% }); %>
           </div>
