@@ -211,7 +211,7 @@
         </table>
       <% } %>
 
-      <a href="/users/<%= user.id %>" class="back-link">← Back to Dashboard</a>
+      
     </div>
   </main>
 
@@ -233,7 +233,7 @@
     function confirmDelete(id, name) {
       deleteId = id;
       document.getElementById('confirmMessage').textContent = 
-        `Are you sure you want to remove Dr. ${name}? This action cannot be undone.`;
+        `Are you sure you want to remove ${name}? This action cannot be undone.`;
       document.getElementById('deleteModal').style.display = 'block';
     }
 

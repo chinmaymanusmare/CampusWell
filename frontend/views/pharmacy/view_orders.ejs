@@ -50,7 +50,7 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/users/' + userid + '" class="btn">DASHBOARD</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="container">
         <h1 class="title">Orders</h1>
@@ -78,7 +78,7 @@
               <% } else { %>
                 <p>No pending orders.</p>
                 <% } %>
-                  <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
+                  
       </div>
     </main>
     <%- include('../partials/footer') %>

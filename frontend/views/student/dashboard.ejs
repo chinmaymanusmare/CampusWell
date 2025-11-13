@@ -52,7 +52,7 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="dashboard-container">
         <h1 class="welcome-title">Welcome, <%= user.name %>
@@ -63,6 +63,7 @@
           <a href="/users/<%= user.id %>/orders" class="dashboard-card">ORDER MEDICINES</a>
           <a href="/users/<%= user.id %>/orders/view" class="dashboard-card">VIEW MY ORDERS</a>
           <a href="/referrals/<%= user.id %>/request" class="dashboard-card">REQUEST REFERRAL</a>
+          <a href="/referrals/<%= user.id %>/view" class="dashboard-card">MY REFERRALS</a>
           <a href="/concerns/<%= user.id %>" class="dashboard-card">ANONYMOUS CONCERN</a>
           <a href="/records/prescriptions/<%= user.id %>" class="dashboard-card">MY PRESCRIPTIONS</a>
         </div>

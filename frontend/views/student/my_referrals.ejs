@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Referrals | Campus Wellness</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 28px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .referrals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .referral-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 5px solid #0d6efd;
+    }
+
+    .referral-card.pending {
+      border-left-color: #ffc107;
+    }
+
+    .referral-card.approved {
+      border-left-color: #28a745;
+    }
+
+    .referral-card.rejected {
+      border-left-color: #dc3545;
+    }
+
+    .referral-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .referral-id {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-badge.approved {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.rejected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .referral-body {
+      margin-bottom: 12px;
+    }
+
+    .referral-label {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    .referral-value {
+      color: #333;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .referral-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .doctor-notes {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      border-left: 3px solid #0d6efd;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state-text {
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      padding: 12px 30px;
+      background: #0d6efd;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0b5ed7;
+    }
+
+    .message {
+      text-align: center;
+      padding: 12px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .message-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header') %>
+    <main class="main-content">
+      <div class="container">
+        <h1 class="page-title">📋 My Referral Requests</h1>
+        
+        <% if (typeof success !== 'undefined' && success) { %>
+          <p class="message message-success"><%= success %></p>
+        <% } %>
+
+        <% if (referrals && referrals.length > 0) { %>
+          <div class="referrals-list">
+            <% referrals.forEach(referral => { %>
+              <div class="referral-card <%= referral.status %>">
+                <div class="referral-header">
+                  <span class="referral-id">Referral #<%= referral.id %></span>
+                  <span class="status-badge <%= referral.status %>"><%= referral.status %></span>
+                </div>
+                
+                <div class="referral-body">
+                  <div class="referral-label">Reason for Referral:</div>
+                  <div class="referral-value"><%= referral.reason %></div>
+                </div>
+
+                <% if (referral.doctor_notes) { %>
+                  <div class="doctor-notes">
+                    <div class="referral-label">Doctor's Response:</div>
+                    <div class="referral-value"><%= referral.doctor_notes %></div>
+                  </div>
+                <% } %>
+
+                <div class="referral-footer">
+                  <span>Requested: <%= new Date(referral.requested_at).toLocaleString('en-IN', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) %></span>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <div class="empty-state-icon">🏥</div>
+            <p class="empty-state-text">You haven't submitted any referral requests yet.</p>
+            <a href="/referrals/<%= userId %>/request" class="btn-primary">Request Referral</a>
+          </div>
+        <% } %>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
+</body>
+
+</html>

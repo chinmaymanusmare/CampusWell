@@ -8,37 +8,125 @@
   <link rel="stylesheet" href="/css/style.css" />
   <style>
     .form-container {
-      max-width: 480px;
+      max-width: 800px;
       margin: 30px auto;
       padding: 28px;
       background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
     }
 
     .form-title {
       text-align: center;
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       margin-bottom: 24px;
+      color: #333;
     }
 
-    .form-group {
-      display: flex;
-      gap: 12px;
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 20px 0 12px 0;
+      color: #555;
+      border-bottom: 2px solid #0d6efd;
+      padding-bottom: 6px;
+    }
+
+    .medicine-selector {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 10px;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
     }
 
-    .form-group label {
-      flex: 0 0 35%;
+    .medicine-selector select,
+    .medicine-selector input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+      font-size: 0.95rem;
+    }
+
+    .medicine-selector .price-display {
+      font-weight: 600;
+      color: #198754;
+      font-size: 1rem;
+    }
+
+    .btn-remove {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 5px;
+      cursor: pointer;
       font-weight: 500;
     }
 
-    .form-group select,
-    .form-group input {
-      flex: 1;
+    .btn-remove:hover {
+      background: #c82333;
+    }
+
+    .btn-add {
+      background: #198754;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      margin-top: 10px;
+    }
+
+    .btn-add:hover {
+      background: #157347;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 5px;
       background: #f5f5f5;
+      font-size: 0.95rem;
+    }
+
+    .total-section {
+      background: #e7f3ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: right;
+    }
+
+    .total-label {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .total-amount {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #0d6efd;
+      margin-top: 6px;
     }
 
     .actions {
@@ -46,14 +134,29 @@
       margin-top: 24px;
     }
 
-    .btn-secondary {
+    .btn-order {
       background: #0d6efd;
-      margin-top: 12px;
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .btn-order:hover {
+      background: #0b5ed7;
+    }
+
+    .btn-order:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
     }
 
     .message {
       text-align: center;
-      padding: 10px;
+      padding: 12px;
       border-radius: 5px;
       margin-bottom: 14px;
       font-weight: 500;
@@ -62,62 +165,237 @@
     .message-error {
       background: #f8d7da;
       color: #721c24;
+      border: 1px solid #f5c6cb;
     }
 
     .message-success {
       background: #d4edda;
       color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .empty-cart {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+      font-style: italic;
     }
   </style>
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="form-container">
-        <h2 class="form-title">Order Medicines</h2>
-        <% if (typeof error !=='undefined' && error) { %>
-          <p class="message message-error">
-            <%= error %>
-          </p>
-          <% } %>
-            <% if (typeof success !=='undefined' && success) { %>
-              <p class="message message-success">
-                <%= success %>
-              </p>
-              <% } %>
-                <form action="/order-medicines" method="POST">
-                  <div class="form-group">
-                    <label for="medicine_id">Medicine</label>
-                    <select id="medicine_id" name="medicine_id" required>
-                      <option value="" disabled selected>Select</option>
-                      <% (medicines||[]).forEach(m=> { %>
-                        <option value="<%= m.id %>">
-                          <%= m.name %> (Stock: <%= m.stock %>)
-                        </option>
-                        <% }) %>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label for="quantity">Quantity</label>
-                    <input type="number" id="quantity" name="quantity" min="1" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="address">Address</label>
-                    <input type="text" id="address" name="address" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="phone_no">Phone No.</label>
-                    <input type="tel" id="phone_no" name="phone_no" required />
-                  </div>
-                  <div class="actions">
-                    <button type="submit" class="btn">Order</button><br />
-                    <a href="/users/<%= userid %>" class="btn btn-secondary">Back to Dashboard</a>
-                  </div>
-                </form>
+        <h2 class="form-title">📦 Order Medicines</h2>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+          <p class="message message-error"><%= error %></p>
+        <% } %>
+        <% if (typeof success !== 'undefined' && success) { %>
+          <p class="message message-success"><%= success %></p>
+        <% } %>
+
+        <form id="orderForm" action="/order-medicines" method="POST">
+          <!-- Medicine Selection Section -->
+          <h3 class="section-title">Select Medicines</h3>
+          <div id="medicineList">
+            <!-- Medicine items will be added here dynamically -->
+          </div>
+          <button type="button" class="btn-add" onclick="addMedicineRow()">+ Add Medicine</button>
+
+          <div class="empty-cart" id="emptyCart">
+            No medicines added yet. Click "Add Medicine" to start your order.
+          </div>
+
+          <!-- Total Price Section -->
+          <div class="total-section" id="totalSection" style="display: none;">
+            <div class="total-label">Total Amount:</div>
+            <div class="total-amount">₹<span id="totalPrice">0</span></div>
+          </div>
+
+          <!-- Prescription Link -->
+          <h3 class="section-title">Prescription (Optional)</h3>
+          <div class="form-group">
+            <label for="prescription_link">Prescription Link/URL</label>
+            <input 
+              type="url" 
+              id="prescription_link" 
+              name="prescription_link" 
+              placeholder="https://example.com/prescription.pdf"
+            />
+            <small style="color: #6c757d;">Optional: Provide a link to your prescription document</small>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="actions">
+            <button type="submit" class="btn-order" id="submitBtn" disabled>
+              Place Order
+            </button>
+          </div>
+
+          <!-- Hidden input to store medicine data as JSON -->
+          <input type="hidden" name="medicines" id="medicinesData" />
+        </form>
       </div>
     </main>
+
+    <script>
+      // Store medicine data
+      // eslint-disable-next-line
+      const medicinesData = <%- JSON.stringify(medicines || []) %>;
+      console.log('Medicines loaded:', medicinesData);
+      
+      // Check if medicines are available
+      if (!medicinesData || medicinesData.length === 0) {
+        alert('No medicines available in stock. Please contact the pharmacy.');
+        document.querySelector('.btn-add').disabled = true;
+      }
+      
+      const medicineMap = {};
+      medicinesData.forEach(m => {
+        medicineMap[m.id] = {
+          name: m.name,
+          price: m.price || 0,
+          stock: m.stock || 0
+        };
+      });
+
+      let medicineItems = [];
+
+      function addMedicineRow() {
+        const id = Date.now();
+        medicineItems.push({ id, medicine_id: '', quantity: 1, price: 0 });
+        console.log('Added medicine row, total items:', medicineItems.length);
+        renderMedicines();
+      }
+
+      function removeMedicineRow(id) {
+        medicineItems = medicineItems.filter(item => item.id !== id);
+        renderMedicines();
+      }
+
+      function updateMedicine(id, field, value) {
+        const item = medicineItems.find(i => i.id === id);
+        if (!item) return;
+
+        if (field === 'medicine_id') {
+          item.medicine_id = value;
+          const med = medicineMap[value];
+          if (med) {
+            item.price = med.price;
+          }
+        } else if (field === 'quantity') {
+          item.quantity = parseInt(value) || 1;
+        }
+
+        renderMedicines();
+      }
+
+      function renderMedicines() {
+        console.log('Rendering medicines, items:', medicineItems);
+        const container = document.getElementById('medicineList');
+        const emptyCart = document.getElementById('emptyCart');
+        const totalSection = document.getElementById('totalSection');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (medicineItems.length === 0) {
+          console.log('No items, showing empty cart');
+          container.innerHTML = '';
+          emptyCart.style.display = 'block';
+          totalSection.style.display = 'none';
+          submitBtn.disabled = true;
+          return;
+        }
+
+        console.log('Showing medicine list');
+        emptyCart.style.display = 'none';
+        totalSection.style.display = 'block';
+
+        container.innerHTML = medicineItems.map(item => {
+          const med = medicineMap[item.medicine_id];
+          const subtotal = (med ? med.price : 0) * item.quantity;
+
+          return `
+            <div class="medicine-selector">
+              <select onchange="updateMedicine(${item.id}, 'medicine_id', this.value)" required>
+                <option value="">Select Medicine</option>
+                ${medicinesData.map(m => `
+                  <option value="${m.id}" ${item.medicine_id == m.id ? 'selected' : ''}>
+                    ${m.name} - ₹${m.price} (Stock: ${m.stock})
+                  </option>
+                `).join('')}
+              </select>
+              <input 
+                type="number" 
+                min="1" 
+                max="${med ? med.stock : 999}" 
+                value="${item.quantity}"
+                onchange="updateMedicine(${item.id}, 'quantity', this.value)"
+                placeholder="Qty"
+                required
+              />
+              <div class="price-display">₹${subtotal}</div>
+              <button type="button" class="btn-remove" onclick="removeMedicineRow(${item.id})">✕</button>
+            </div>
+          `;
+        }).join('');
+
+        updateTotal();
+      }
+
+      function updateTotal() {
+        let total = 0;
+        let allValid = true;
+
+        medicineItems.forEach(item => {
+          if (!item.medicine_id || item.quantity < 1) {
+            allValid = false;
+            return;
+          }
+          const med = medicineMap[item.medicine_id];
+          if (med) {
+            total += med.price * item.quantity;
+          }
+        });
+
+        document.getElementById('totalPrice').textContent = total;
+        document.getElementById('submitBtn').disabled = !allValid || medicineItems.length === 0;
+      }
+
+      // Handle form submission
+      document.getElementById('orderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Validate at least one medicine
+        if (medicineItems.length === 0) {
+          alert('Please add at least one medicine to your order.');
+          return;
+        }
+
+        // Validate all items have medicine selected
+        const allValid = medicineItems.every(item => item.medicine_id && item.quantity >= 1);
+        if (!allValid) {
+          alert('Please select a medicine and quantity for all items.');
+          return;
+        }
+
+        // Prepare data
+        const orderData = medicineItems.map(item => ({
+          medicine_id: parseInt(item.medicine_id),
+          quantity: parseInt(item.quantity)
+        }));
+
+        document.getElementById('medicinesData').value = JSON.stringify(orderData);
+        
+        // Submit the form
+        this.submit();
+      });
+
+      // Initialize with one empty row
+      addMedicineRow();
+    </script>
+
     <%- include('../partials/footer') %>
 </body>
-
 </html>

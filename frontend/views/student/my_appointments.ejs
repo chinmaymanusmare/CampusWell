@@ -223,7 +223,7 @@
             <% upcomingAppts.forEach(apt => { %>
               <div class="appointment-card">
                 <div class="appointment-header">
-                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <div class="doctor-name"><%= apt.doctor_name %></div>
                   <span class="appointment-status status-scheduled">Scheduled</span>
                 </div>
 
@@ -243,10 +243,10 @@
                     <span class="detail-value"><%= apt.specialization || 'General' %></span>
                   </div>
 
-                  <div class="detail-item">
+                  <!-- <div class="detail-item">
                     <span class="detail-label">📍 Location:</span>
                     <span class="detail-value">Campus Clinic</span>
-                  </div>
+                  </div> -->
                 </div>
 
                 <% if (apt.reason) { %>
@@ -282,7 +282,7 @@
             <% pastAppts.forEach(apt => { %>
               <div class="appointment-card">
                 <div class="appointment-header">
-                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <div class="doctor-name"><%= apt.doctor_name %></div>
                   <span class="appointment-status status-<%= apt.status %>">
                     <%= apt.status.charAt(0).toUpperCase() + apt.status.slice(1) %>
                   </span>
@@ -325,7 +325,7 @@
             <% appointments.forEach(apt => { %>
               <div class="appointment-card">
                 <div class="appointment-header">
-                  <div class="doctor-name">Dr. <%= apt.doctor_name %></div>
+                  <div class="doctor-name"><%= apt.doctor_name %></div>
                   <span class="appointment-status status-<%= apt.status %>">
                     <%= apt.status.charAt(0).toUpperCase() + apt.status.slice(1) %>
                   </span>
@@ -355,7 +355,7 @@
         <% } %>
       </div>
 
-      <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+      
     </div>
   </main>
 

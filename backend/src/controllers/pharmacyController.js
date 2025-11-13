@@ -53,55 +53,110 @@ exports.updateInventoryItem = async (req, res) => {
 // ===========================================
 exports.placeOrder = async (req, res) => {
   const studentId = req.user.id;
-  const { medicine_id, quantity, prescription_link } = req.body;
+  const { medicines, prescription_link } = req.body;
 
   try {
+    // Parse medicines if it's a string (from form submission)
+    let medicineItems;
+    if (typeof medicines === 'string') {
+      try {
+        medicineItems = JSON.parse(medicines);
+      } catch (e) {
+        return res.status(400).json({ success: false, message: "Invalid medicines data" });
+      }
+    } else {
+      medicineItems = medicines;
+    }
+
+    // Validate medicines array
+    if (!Array.isArray(medicineItems) || medicineItems.length === 0) {
+      return res.status(400).json({ success: false, message: "Please add at least one medicine" });
+    }
+
     // Get student name
     const userResult = await pool.query("SELECT name FROM users WHERE id = $1", [studentId]);
     const studentName = userResult.rows[0].name;
 
-    // Get medicine details
-    const medResult = await pool.query("SELECT * FROM medicines WHERE id = $1", [medicine_id]);
-    if (medResult.rows.length === 0)
-      return res.status(404).json({ success: false, message: "Medicine not found" });
+    // Begin transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    const medicine = medResult.rows[0];
+      let totalAmount = 0;
 
-    if (medicine.stock < quantity)
-      return res.status(400).json({ success: false, message: "Not enough stock available" });
+      // Validate all medicines and calculate total
+      for (const item of medicineItems) {
+        const { medicine_id, quantity } = item;
 
-    const total = medicine.price * quantity;
+        if (!medicine_id || !quantity || quantity < 1) {
+          throw new Error("Invalid medicine or quantity");
+        }
 
-    // Create order (store prescription_link when provided)
-    const orderResult = await pool.query(
-      `INSERT INTO orders (student_id, student_name, total, prescription_link)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [studentId, studentName, total, prescription_link || null]
-    );
+        // Get medicine details
+        const medResult = await client.query(
+          "SELECT * FROM medicines WHERE id = $1",
+          [medicine_id]
+        );
 
-    const orderId = orderResult.rows[0].id;
+        if (medResult.rows.length === 0) {
+          throw new Error(`Medicine with ID ${medicine_id} not found`);
+        }
 
-    // Insert into order_medicines
-    await pool.query(
-      `INSERT INTO order_medicines (order_id, medicine_id, quantity)
-       VALUES ($1, $2, $3)`,
-      [orderId, medicine_id, quantity]
-    );
+        const medicine = medResult.rows[0];
 
-    // Decrease stock
-    await pool.query(
-      `UPDATE medicines SET stock = stock - $1 WHERE id = $2`,
-      [quantity, medicine_id]
-    );
+        if (medicine.stock < quantity) {
+          throw new Error(`Not enough stock for ${medicine.name}. Available: ${medicine.stock}`);
+        }
 
-    res.status(201).json({
-      success: true,
-      message: "Order placed successfully",
-      order_id: orderId
-    });
+        totalAmount += medicine.price * quantity;
+      }
+
+      // Create order
+      const orderResult = await client.query(
+        `INSERT INTO orders (student_id, student_name, total, prescription_link)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [studentId, studentName, totalAmount, prescription_link || null]
+      );
+
+      const orderId = orderResult.rows[0].id;
+
+      // Insert all order items and update stock
+      for (const item of medicineItems) {
+        const { medicine_id, quantity } = item;
+
+        // Insert into order_medicines
+        await client.query(
+          `INSERT INTO order_medicines (order_id, medicine_id, quantity)
+           VALUES ($1, $2, $3)`,
+          [orderId, medicine_id, quantity]
+        );
+
+        // Decrease stock
+        await client.query(
+          `UPDATE medicines SET stock = stock - $1 WHERE id = $2`,
+          [quantity, medicine_id]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      res.status(201).json({
+        success: true,
+        message: "Order placed successfully",
+        order_id: orderId
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error("Error placing order:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: err.message || "Server error" 
+    });
   }
 };
 

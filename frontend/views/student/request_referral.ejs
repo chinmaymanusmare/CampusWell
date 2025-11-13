@@ -4,19 +4,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Request Referral</title>
+  <title>Request Referral | Campus Wellness</title>
   <link rel="stylesheet" href="/css/style.css" />
   <style>
     .form-container {
-      max-width: 480px;
+      max-width: 600px;
       margin: 30px auto;
       padding: 28px;
       background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
     }
 
     .form-title {
       text-align: center;
-      font-size: 1.6rem;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      font-size: 0.95rem;
       margin-bottom: 24px;
     }
 
@@ -72,47 +82,30 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="form-container">
-        <h2 class="form-title">Request Referral</h2>
+        <h2 class="form-title">🏥 Request Medical Referral to SDM Hospital</h2>
+        <p class="subtitle">Submit a referral request for specialist consultation</p>
+        
         <% if (typeof error !=='undefined' && error) { %>
           <p class="message message-error">
             <%= error %>
           </p>
-          <% } %>
-            <% if (typeof success !=='undefined' && success) { %>
-              <p class="message message-success">
-                <%= success %>
-              </p>
-              <% } %>
+        <% } %>
+        <% if (typeof success !=='undefined' && success) { %>
+          <p class="message message-success">
+            <%= success %>
+          </p>
+        <% } %>
                 <form action="/request-referral" method="POST">
                   <div class="form-group">
-                    <label for="problem">Problem</label>
-                    <input type="text" id="problem" name="problem" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="doctor_id">Doctor</label>
-                    <select id="doctor_id" name="doctor_id" required>
-                      <option value="" disabled selected>Select</option>
-                      <% (doctors||[]).forEach(doc=> { %>
-                        <option value="<%= doc.id %>">
-                          <%= doc.name %>
-                        </option>
-                        <% }) %>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label for="date">Date</label>
-                    <input type="date" id="date" name="date" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="time">Time</label>
-                    <input type="time" id="time" name="time" required />
+                    <label for="reason">Reason for Referral</label>
+                    <input type="text" id="reason" name="reason" placeholder="Describe your medical concern" required />
                   </div>
                   <div class="actions">
-                    <button type="submit" class="btn">Request</button><br />
-                    <a href="/users/<%= userid %>" class="btn btn-secondary">Back to Dashboard</a>
+                    <button type="submit" class="btn">Submit Referral Request</button><br />
+                    
                   </div>
                 </form>
       </div>

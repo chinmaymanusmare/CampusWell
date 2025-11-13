@@ -71,7 +71,7 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="container">
         <h1 class="title">Referral Requests</h1>
@@ -104,7 +104,7 @@
               <% } else { %>
                 <p>No pending referrals.</p>
                 <% } %>
-                  <a href="/users/<%= userid %>" class="btn">Back to Dashboard</a>
+                  
       </div>
     </main>
     <%- include('../partials/footer') %>

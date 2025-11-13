@@ -263,7 +263,14 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <script>
+      // Friendly confirmation alert after successful booking
+      alert('✅ Appointment booked successfully!');
+    </script>
+  <% } %>
 
   <main class="main-content">
     <div class="container">
@@ -342,7 +349,7 @@
                   >
                     <td>
                       <div class="doctor-info">
-                        <span class="doctor-name">Dr. <%= slot.doctor_name %></span>
+                        <span class="doctor-name"><%= slot.doctor_name %></span>
                         <span class="doctor-specialization"><%= slot.specialization || 'General' %></span>
                       </div>
                     </td>
@@ -393,7 +400,7 @@
         </div>
       </div>
 
-      <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+      
     </div>
   </main>
 

@@ -54,7 +54,7 @@
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/users/' + userid + '" class="btn">DASHBOARD</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="form-container">
         <h2 class="form-title">Update Stock</h2>
@@ -76,7 +76,7 @@
           </div>
           <div class="actions">
             <button type="submit" class="btn">Update</button><br />
-            <a href="/users/<%= userid %>" class="btn btn-secondary">Back to Dashboard</a>
+            
           </div>
         </form>
       </div>

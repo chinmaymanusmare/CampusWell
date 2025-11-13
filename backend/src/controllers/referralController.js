@@ -103,7 +103,7 @@ exports.updateReferralStatus = async (req, res) => {
        SET status = $1, doctor_notes = $2
        WHERE id = $3
        RETURNING *`,
-      [status === "approved" ? "approved" : "rejected", `Reviewed by Dr. ${doctorName}`, id]
+      [status === "approved" ? "approved" : "rejected", `Reviewed by ${doctorName}`, id]
     );
 
     res.status(200).json({

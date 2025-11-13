@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/css/style.css" />
   <style>
     .container {
-      max-width: 900px;
+      max-width: 1200px;
       margin: 30px auto;
       padding: 20px;
     }
@@ -16,62 +16,437 @@
     .title {
       text-align: center;
       font-size: 1.8rem;
-      margin-bottom: 24px;
+      margin-bottom: 30px;
     }
 
-    .card {
-      background: #f0f0f0;
-      padding: 18px;
-      border: 1px solid #ddd;
+    .table-container {
+      overflow-x: auto;
+      background: white;
       border-radius: 8px;
-      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .row {
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #0d6efd;
+      color: white;
+    }
+
+    th {
+      padding: 14px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #e0e0e0;
+      transition: background 0.2s;
+    }
+
+    tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    td {
+      padding: 12px;
+      font-size: 0.95rem;
+    }
+
+    .action-buttons {
       display: flex;
-      margin-bottom: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .row strong {
-      width: 150px;
-      flex-shrink: 0;
-    }
-
-    .back {
+    .btn-action {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
       display: inline-block;
+      transition: 0.2s;
+    }
+
+    .btn-view {
+      background: #0d6efd;
+      color: white;
+    }
+
+    .btn-view:hover {
+      background: #0b5ed7;
+    }
+
+    .btn-add {
+      background: #198754;
+      color: white;
+    }
+
+    .btn-add:hover {
+      background: #157347;
+    }
+
+    .btn-complete {
+      background: #ffc107;
+      color: #000;
+    }
+
+    .btn-complete:hover {
+      background: #e0a800;
+    }
+
+    .no-appointments {
+      text-align: center;
+      padding: 40px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-scheduled {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-completed {
+      background: #cce5ff;
+      color: #004085;
+    }
+
+    .status-cancelled {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .success-message {
+      max-width: 600px;
+      margin: 0 auto 20px;
+      padding: 14px 20px;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .filter-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .filter-controls {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .filter-input {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.95rem;
+      min-width: 200px;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.95rem;
+      min-width: 150px;
+      background: white;
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: 10px;
       margin-top: 20px;
+    }
+
+    .btn-filter {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-apply {
+      background: #0d6efd;
+      color: white;
+    }
+
+    .btn-apply:hover {
+      background: #0b5ed7;
+    }
+
+    .btn-reset {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-reset:hover {
+      background: #5a6268;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #e7f3ff;
+      border-radius: 8px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0d6efd;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 3px;
     }
   </style>
 </head>
 
 <body>
-  <%- include('../partials/header', { navHtml: '<a href="/logout" class="btn">LOG OUT</a>' }) %>
+  <%- include('../partials/header') %>
     <main class="main-content">
       <div class="container">
-        <h1 class="title">Appointments</h1>
+        <h1 class="title">📅 My Appointments</h1>
+        
+        <% if (typeof success !== 'undefined') { %>
+          <div class="success-message">
+            <% if (success === 'prescription_added') { %>
+              ✅ Prescription added successfully!
+            <% } else if (success === 'appointment_completed') { %>
+              ✅ Appointment marked as completed!
+            <% } %>
+          </div>
+        <% } %>
+        
         <% if ((appointments||[]).length) { %>
-          <% appointments.forEach(a=> { %>
-            <div class="card">
-              <div class="row"><strong>Student Id:</strong> <span>
-                  <%= a.student_id %>
-                </span></div>
-              <div class="row"><strong>Student Name:</strong> <span>
-                  <%= a.student_name %>
-                </span></div>
-              <div class="row"><strong>Date:</strong> <span>
-                  <%= new Date(a.date).toLocaleDateString('en-GB') %>
-                </span></div>
-              <div class="row"><strong>Time:</strong> <span>
-                  <%= a.time %>
-                </span></div>
+          <div class="stats-bar">
+            <div class="stat-item">
+              <div class="stat-value" id="totalCount"><%= appointments.length %></div>
+              <div class="stat-label">Total Appointments</div>
             </div>
-            <% }) %>
-              <% } else { %>
-                <p>No scheduled appointments.</p>
-                <% } %>
-                  <a href="/users/<%= userid %>" class="btn back">Back to Dashboard</a>
+            <div class="stat-item">
+              <div class="stat-value" id="visibleCount"><%= appointments.length %></div>
+              <div class="stat-label">Showing</div>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <div class="filter-controls">
+              <div class="filter-group">
+                <label for="filterStudentName">Student Name</label>
+                <input 
+                  type="text" 
+                  id="filterStudentName" 
+                  class="filter-input" 
+                  placeholder="Search by name..."
+                  onkeyup="applyFilters()"
+                />
+              </div>
+              <div class="filter-group">
+                <label for="filterStudentId">Student ID</label>
+                <input 
+                  type="text" 
+                  id="filterStudentId" 
+                  class="filter-input" 
+                  placeholder="Search by ID..."
+                  onkeyup="applyFilters()"
+                />
+              </div>
+              <div class="filter-group">
+                <label for="filterDate">Date</label>
+                <input 
+                  type="date" 
+                  id="filterDate" 
+                  class="filter-input"
+                  onchange="applyFilters()"
+                />
+              </div>
+              <div class="filter-group">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" class="filter-select" onchange="applyFilters()">
+                  <option value="">All Status</option>
+                  <option value="scheduled" selected>Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+            <div class="filter-buttons">
+              <button class="btn-filter btn-reset" onclick="resetFilters()">Reset Filters</button>
+            </div>
+          </div>
+        <% } %>
+        
+        <% if ((appointments||[]).length) { %>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Student Name</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% appointments.forEach(a => { %>
+                  <tr>
+                    <td><%= a.student_id %></td>
+                    <td><%= a.student_name %></td>
+                    <td><%= new Date(a.date).toLocaleDateString('en-IN', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    }) %></td>
+                    <td><%= a.time %></td>
+                    <td><%= a.reason || 'N/A' %></td>
+                    <td>
+                      <span class="status-badge status-<%= a.status || 'scheduled' %>">
+                        <%= (a.status || 'scheduled').toUpperCase() %>
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <a href="/prescriptions/student/<%= a.student_id %>/view" class="btn-action btn-view">
+                          📋 View History
+                        </a>
+                        <a href="/prescriptions/add?student_id=<%= a.student_id %>&student_name=<%= encodeURIComponent(a.student_name) %>" class="btn-action btn-add">
+                          ➕ Add Prescription
+                        </a>
+                        <% if (a.status !== 'completed' && a.status !== 'cancelled') { %>
+                          <form action="/appointments/<%= a.id %>/complete" method="POST" style="display: inline;">
+                            <button type="submit" class="btn-action btn-complete">
+                              ✅ Mark Complete
+                            </button>
+                          </form>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="no-appointments">
+            <p>📭 No scheduled appointments.</p>
+          </div>
+        <% } %>
       </div>
     </main>
+
+    <script>
+      function applyFilters() {
+        const nameFilter = document.getElementById('filterStudentName').value.toLowerCase();
+        const idFilter = document.getElementById('filterStudentId').value.toLowerCase();
+        const dateFilter = document.getElementById('filterDate').value;
+        const statusFilter = document.getElementById('filterStatus').value.toLowerCase();
+
+        const rows = document.querySelectorAll('tbody tr');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const studentId = row.cells[0].textContent.toLowerCase();
+          const studentName = row.cells[1].textContent.toLowerCase();
+          const date = row.cells[2].textContent;
+          const status = row.querySelector('.status-badge').textContent.toLowerCase().trim();
+
+          // Check student name filter
+          const nameMatch = !nameFilter || studentName.includes(nameFilter);
+
+          // Check student ID filter
+          const idMatch = !idFilter || studentId.includes(idFilter);
+
+          // Check date filter
+          let dateMatch = true;
+          if (dateFilter) {
+            const filterDate = new Date(dateFilter);
+            const rowDateText = row.cells[2].textContent.trim();
+            // Parse date format like "13 Nov 2025"
+            const rowDate = new Date(rowDateText);
+            dateMatch = rowDate.toDateString() === filterDate.toDateString();
+          }
+
+          // Check status filter
+          const statusMatch = !statusFilter || status === statusFilter;
+
+          // Show or hide row (all filters must match)
+          if (nameMatch && idMatch && dateMatch && statusMatch) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        // Update visible count
+        document.getElementById('visibleCount').textContent = visibleCount;
+      }
+
+      function resetFilters() {
+        document.getElementById('filterStudentName').value = '';
+        document.getElementById('filterStudentId').value = '';
+        document.getElementById('filterDate').value = '';
+        document.getElementById('filterStatus').value = 'scheduled';
+        applyFilters();
+      }
+
+      // Apply filters on page load to show only scheduled appointments by default
+      window.addEventListener('DOMContentLoaded', function() {
+        applyFilters();
+      });
+    </script>
+
     <%- include('../partials/footer') %>
 </body>
 

@@ -115,7 +115,8 @@ router.get('/users/:id/appointments', auth, async (req, res) => {
         res.render('student/book_appointment', { 
             userid: userId,
             doctors: doctorsResult.rows,
-            availableSlots: availableSlotsResult.rows
+            availableSlots: availableSlotsResult.rows,
+            success: req.query.success === 'true'
         });
     } catch (error) {
         console.error('Error loading appointment page:', error);
@@ -222,11 +223,120 @@ router.get('/users/:id/orders', auth, async (req, res) => {
 
         res.render('student/order_medicine', { 
             userid: userId,
-            medicines: medicinesResult.rows
+            medicines: medicinesResult.rows,
+            success: req.query.success === 'true' ? 'Order placed successfully! 🎉' : null
         });
     } catch (error) {
         console.error('Error loading order page:', error);
         res.status(500).send('Internal server error');
+    }
+});
+
+// Order medicine - handle form submission
+router.post('/order-medicines', auth, async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const { medicines, prescription_link } = req.body;
+
+        console.log('Order request:', { medicines, prescription_link });
+
+        // Parse medicines if it's a string
+        let medicineItems;
+        if (typeof medicines === 'string') {
+            try {
+                medicineItems = JSON.parse(medicines);
+            } catch (e) {
+                return res.status(400).send('Invalid medicines data');
+            }
+        } else {
+            medicineItems = medicines;
+        }
+
+        // Validate
+        if (!Array.isArray(medicineItems) || medicineItems.length === 0) {
+            return res.status(400).send('Please add at least one medicine');
+        }
+
+        // Get student name
+        const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [studentId]);
+        const studentName = userResult.rows[0].name;
+
+        // Begin transaction
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            let totalAmount = 0;
+
+            // Validate all medicines and calculate total
+            for (const item of medicineItems) {
+                const { medicine_id, quantity } = item;
+
+                if (!medicine_id || !quantity || quantity < 1) {
+                    throw new Error('Invalid medicine or quantity');
+                }
+
+                // Get medicine details
+                const medResult = await client.query(
+                    'SELECT * FROM medicines WHERE id = $1',
+                    [medicine_id]
+                );
+
+                if (medResult.rows.length === 0) {
+                    throw new Error(`Medicine not found`);
+                }
+
+                const medicine = medResult.rows[0];
+
+                if (medicine.stock < quantity) {
+                    throw new Error(`Not enough stock for ${medicine.name}. Available: ${medicine.stock}`);
+                }
+
+                totalAmount += medicine.price * quantity;
+            }
+
+            // Create order
+            const orderResult = await client.query(
+                `INSERT INTO orders (student_id, student_name, total, prescription_link)
+                 VALUES ($1, $2, $3, $4) RETURNING id`,
+                [studentId, studentName, totalAmount, prescription_link || null]
+            );
+
+            const orderId = orderResult.rows[0].id;
+
+            // Insert all order items and update stock
+            for (const item of medicineItems) {
+                const { medicine_id, quantity } = item;
+
+                // Insert into order_medicines
+                await client.query(
+                    `INSERT INTO order_medicines (order_id, medicine_id, quantity)
+                     VALUES ($1, $2, $3)`,
+                    [orderId, medicine_id, quantity]
+                );
+
+                // Decrease stock
+                await client.query(
+                    `UPDATE medicines SET stock = stock - $1 WHERE id = $2`,
+                    [quantity, medicine_id]
+                );
+            }
+
+            await client.query('COMMIT');
+
+            console.log('Order created:', orderId);
+
+            // Redirect back with success message
+            res.redirect(`/users/${studentId}/orders?success=true`);
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Error placing order:', error);
+        res.status(500).send(`Error placing order: ${error.message}`);
     }
 });
 
@@ -239,17 +349,80 @@ router.get('/referrals/:id/request', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        // Fetch available doctors
-        const doctorsResult = await pool.query(
-            "SELECT id, name, specialization FROM users WHERE role = 'doctor'"
-        );
-
         res.render('student/request_referral', { 
             userid: userId,
-            doctors: doctorsResult.rows
+            success: req.query.success === 'true' ? 'Referral request submitted successfully! A doctor will review it soon.' : null
         });
     } catch (error) {
         console.error('Error loading referral page:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Request referral - handle form submission
+router.post('/request-referral', auth, async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const { reason, details } = req.body;
+
+        console.log('Referral request:', { studentId, reason, details });
+
+        // Validate input
+        if (!reason || reason.trim() === '') {
+            return res.status(400).send('Please provide a reason for the referral');
+        }
+
+        // Get student name
+        const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [studentId]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).send('Student not found');
+        }
+
+        const studentName = userResult.rows[0].name;
+
+        // Combine reason and details
+        const fullReason = details ? `${reason}\n\nAdditional Details: ${details}` : reason;
+
+        // Insert referral request
+        const result = await pool.query(
+            `INSERT INTO referrals (student_id, student_name, reason, status, requested_at)
+             VALUES ($1, $2, $3, 'pending', CURRENT_TIMESTAMP)
+             RETURNING id`,
+            [studentId, studentName, fullReason]
+        );
+
+        console.log('Referral created:', result.rows[0].id);
+
+        // Redirect back with success message
+        res.redirect(`/referrals/${studentId}/request?success=true`);
+    } catch (error) {
+        console.error('Error creating referral:', error);
+        res.status(500).send(`Error creating referral: ${error.message}`);
+    }
+});
+
+// View referral status - for students
+router.get('/referrals/:id/view', auth, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        
+        if (req.user.id != userId) {
+            return res.status(403).render('error/403');
+        }
+
+        // Fetch student's referrals
+        const referralsResult = await pool.query(
+            'SELECT * FROM referrals WHERE student_id = $1 ORDER BY requested_at DESC',
+            [userId]
+        );
+
+        res.render('student/my_referrals', { 
+            userId: userId,
+            referrals: referralsResult.rows,
+            success: req.query.success === 'true' ? 'Referral submitted successfully!' : null
+        });
+    } catch (error) {
+        console.error('Error loading referrals:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -263,9 +436,15 @@ router.get('/concerns/:id', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        // Fetch user's concerns
+        // Fetch user's concerns with responder name (if responded)
         const concernsResult = await pool.query(
-            'SELECT * FROM concerns WHERE student_id = $1 ORDER BY created_at DESC',
+            `SELECT 
+                c.*, 
+                u.name AS replied_by_name
+             FROM concerns c
+             LEFT JOIN users u ON c.responded_by = u.id
+             WHERE c.student_id = $1
+             ORDER BY c.created_at DESC`,
             [userId]
         );
 
@@ -313,18 +492,57 @@ router.get('/appointments/doctor/:id', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        // Fetch doctor's appointments
+        // Fetch doctor's appointments - sorted by date and time in ascending order (upcoming first)
         const appointmentsResult = await pool.query(
-            'SELECT * FROM appointments WHERE doctor_id = $1 ORDER BY date DESC, time DESC',
+            'SELECT * FROM appointments WHERE doctor_id = $1 ORDER BY date ASC, time ASC',
             [doctorId]
         );
 
         res.render('doctor/view_appointments', { 
             userid: doctorId,
-            appointments: appointmentsResult.rows
+            appointments: appointmentsResult.rows,
+            success: req.query.success
         });
     } catch (error) {
         console.error('Error loading appointments:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - mark appointment as completed
+router.post('/appointments/:appointmentId/complete', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const appointmentId = req.params.appointmentId;
+        const doctorId = req.user.id;
+
+        // Verify the appointment belongs to this doctor
+        const appointmentCheck = await pool.query(
+            'SELECT doctor_id FROM appointments WHERE id = $1',
+            [appointmentId]
+        );
+
+        if (appointmentCheck.rows.length === 0) {
+            return res.status(404).send('Appointment not found');
+        }
+
+        if (appointmentCheck.rows[0].doctor_id != doctorId) {
+            return res.status(403).send('Unauthorized');
+        }
+
+        // Update appointment status to completed
+        await pool.query(
+            `UPDATE appointments SET status = 'completed' WHERE id = $1`,
+            [appointmentId]
+        );
+
+        // Redirect back to appointments page with success message
+        res.redirect(`/appointments/doctor/${doctorId}?success=appointment_completed`);
+    } catch (error) {
+        console.error('Error completing appointment:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -349,6 +567,37 @@ router.get('/referrals/doctor/:id', auth, async (req, res) => {
         });
     } catch (error) {
         console.error('Error loading referrals:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - approve/reject referral - POST handler
+router.post('/approve-referrals', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const { referral_id, action } = req.body;
+        const doctorId = req.user.id;
+
+        // Get doctor name
+        const doctorResult = await pool.query('SELECT name FROM users WHERE id = $1', [doctorId]);
+        const doctorName = doctorResult.rows[0]?.name || 'Doctor';
+
+        // Update referral status
+        const status = action === 'approve' ? 'approved' : 'rejected';
+        const doctorNotes = `Reviewed by ${doctorName}`;
+
+        await pool.query(
+            `UPDATE referrals SET status = $1, doctor_notes = $2 WHERE id = $3`,
+            [status, doctorNotes, referral_id]
+        );
+
+        // Redirect back to referrals page
+        res.redirect(`/referrals/doctor/${doctorId}`);
+    } catch (error) {
+        console.error('Error updating referral:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -400,6 +649,137 @@ router.get('/records/:id/edit', auth, async (req, res) => {
         });
     } catch (error) {
         console.error('Error loading prescription page:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - view student prescription history (uses API)
+router.get('/prescriptions/student/:studentId/view', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const studentId = req.params.studentId;
+
+        // Fetch student info
+        const studentResult = await pool.query(
+            'SELECT name FROM users WHERE id = $1',
+            [studentId]
+        );
+
+        // Use the existing API to fetch prescriptions
+        // This API already filters based on doctor's specialization
+        const recordController = require('../controllers/recordController');
+        
+        // Create mock req/res for the API call
+        const mockReq = {
+            user: req.user,
+            params: { studentId }
+        };
+        
+        let prescriptionsData = [];
+        const mockRes = {
+            status: (code) => ({
+                json: (data) => {
+                    if (data.success) {
+                        prescriptionsData = data.data;
+                    }
+                }
+            })
+        };
+
+        await recordController.getStudentRecordForDoctor(mockReq, mockRes);
+
+        res.render('doctor/student_prescriptions', { 
+            userid: req.user.id,
+            studentId: studentId,
+            studentName: studentResult.rows[0]?.name || 'Student',
+            prescriptions: prescriptionsData
+        });
+    } catch (error) {
+        console.error('Error loading student prescriptions:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - add prescription for specific student
+router.get('/prescriptions/add', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const studentId = req.query.student_id;
+        const studentName = req.query.student_name;
+
+        // Fetch doctor name
+        const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const doctorName = userResult.rows[0]?.name || 'Doctor';
+
+        res.render('doctor/add_prescription', { 
+            userid: req.user.id,
+            username: doctorName,
+            studentId: studentId,
+            studentName: studentName
+        });
+    } catch (error) {
+        console.error('Error loading add prescription page:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - add prescription POST handler (uses API)
+router.post('/add-prescription', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const { student_id, diagnosis, medicines, notes, is_general } = req.body;
+
+        // Use the existing API controller to add prescription
+        const recordController = require('../controllers/recordController');
+        
+        // Prepare the request body for the API
+        const apiReqBody = {
+            student_id,
+            diagnosis,
+            medicines,
+            notes
+        };
+
+        // If is_general checkbox is checked, set category to 'general'
+        // Otherwise, the API will use doctor's specialization
+        if (is_general === 'true') {
+            apiReqBody.category = 'general';
+        }
+
+        // Create mock req/res for the API call
+        const mockReq = {
+            user: req.user,
+            body: apiReqBody
+        };
+        
+        let success = false;
+        const mockRes = {
+            status: (code) => ({
+                json: (data) => {
+                    success = data.success;
+                }
+            })
+        };
+
+        await recordController.addHealthRecord(mockReq, mockRes);
+
+        if (success) {
+            // Redirect back to appointments with success message
+            res.redirect(`/appointments/doctor/${req.user.id}?success=prescription_added`);
+        } else {
+            res.status(500).send('Failed to add prescription');
+        }
+    } catch (error) {
+        console.error('Error adding prescription:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -717,7 +1097,7 @@ router.get('/users/:id/orders/view', auth, async (req, res) => {
             `SELECT 
                 o.id,
                 o.status,
-                o.prescription_id,
+                o.prescription_link,
                 o.ordered_at as created_at,
                 o.total
              FROM orders o
@@ -731,13 +1111,14 @@ router.get('/users/:id/orders/view', auth, async (req, res) => {
             ordersResult.rows.map(async (order) => {
                 const medicinesResult = await pool.query(
                     `SELECT 
-                        oi.medicine_id,
-                        oi.quantity,
+                        om.medicine_id,
+                        om.quantity,
                         m.name,
-                        m.category
-                     FROM order_items oi
-                     LEFT JOIN medicines m ON oi.medicine_id = m.id
-                     WHERE oi.order_id = $1`,
+                        m.price,
+                        m.description
+                     FROM order_medicines om
+                     LEFT JOIN medicines m ON om.medicine_id = m.id
+                     WHERE om.order_id = $1`,
                     [order.id]
                 );
                 return {

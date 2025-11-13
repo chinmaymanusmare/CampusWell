@@ -216,10 +216,19 @@
                   </span>
                 </div>
 
-                <% if (order.prescription_id) { %>
+                <div class="detail-row">
+                  <span class="detail-label">💰 Total Amount:</span>
+                  <span class="detail-value" style="font-weight: 600; color: #0d6efd;">₹<%= order.total %></span>
+                </div>
+
+                <% if (order.prescription_link) { %>
                   <div class="detail-row">
                     <span class="detail-label">📋 Prescription:</span>
-                    <span class="detail-value">#<%= order.prescription_id %></span>
+                    <span class="detail-value">
+                      <a href="<%= order.prescription_link %>" target="_blank" style="color: #0d6efd; text-decoration: none;">
+                        View Prescription ↗
+                      </a>
+                    </span>
                   </div>
                 <% } %>
 
@@ -243,9 +252,9 @@
                 </div>
               <% } %>
 
-              <% if (order.prescription_id) { %>
+              <% if (order.prescription_link) { %>
                 <div class="prescription-info">
-                  ℹ️ This order is based on prescription #<%= order.prescription_id %>
+                  ℹ️ This order includes a prescription document.
                 </div>
               <% } %>
 
@@ -263,7 +272,7 @@
         </div>
       <% } %>
 
-      <a href="/users/<%= userid %>" class="back-link">← Back to Dashboard</a>
+      
     </div>
   </main>
 

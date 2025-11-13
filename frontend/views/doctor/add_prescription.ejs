@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Prescription</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .form-container {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 30px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+
+    .form-title {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .student-info {
+      text-align: center;
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 30px;
+      padding: 12px;
+      background: #e7f3ff;
+      border-radius: 6px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+      background: #f9f9f9;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn-submit:hover {
+      background: #0b5ed7;
+    }
+
+    .btn-back {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .btn-back:hover {
+      background: #5a6268;
+    }
+
+    .required {
+      color: #dc3545;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .checkbox-group label {
+      margin: 0;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .help-text {
+      font-size: 0.9rem;
+      color: #6c757d;
+      margin-top: 6px;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header') %>
+    <main class="main-content">
+      <div class="form-container">
+        <a href="/appointments/doctor/<%= userid %>" class="btn-back">← Back to Appointments</a>
+        
+        <h2 class="form-title">➕ Add Prescription</h2>
+        <div class="student-info">
+          <strong>Patient:</strong> <%= studentName %> (ID: <%= studentId %>)
+        </div>
+
+        <form action="/add-prescription" method="POST">
+          <input type="hidden" name="student_id" value="<%= studentId %>" />
+          <input type="hidden" name="student_name" value="<%= studentName %>" />
+
+          <div class="form-group">
+            <label for="date">Date <span class="required">*</span></label>
+            <input type="date" id="date" name="date" required value="<%= new Date().toISOString().split('T')[0] %>" />
+          </div>
+
+          <div class="form-group">
+            <label for="diagnosis">Diagnosis <span class="required">*</span></label>
+            <input type="text" id="diagnosis" name="diagnosis" placeholder="Enter diagnosis" required />
+          </div>
+
+          <div class="form-group">
+            <label for="medicines">Medicines <span class="required">*</span></label>
+            <textarea id="medicines" name="medicines" placeholder="List all prescribed medicines with dosage" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Additional Notes (Optional)</label>
+            <textarea id="notes" name="notes" placeholder="Any additional instructions or notes"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Prescription Category</label>
+            <div class="checkbox-group">
+              <input type="checkbox" id="is_general" name="is_general" value="true" />
+              <label for="is_general">Mark as General Prescription</label>
+            </div>
+            <p class="help-text">
+              ℹ️ Check this box to make the prescription visible to all doctors. 
+              If unchecked, it will be categorized under your specialization and visible only to doctors with the same specialization.
+            </p>
+          </div>
+
+          <button type="submit" class="btn-submit">Save Prescription</button>
+        </form>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
+</body>
+
+</html>

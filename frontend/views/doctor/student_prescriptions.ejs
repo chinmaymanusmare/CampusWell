@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prescription History - <%= studentName %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 28px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .student-info {
+      font-size: 1.1rem;
+      color: #666;
+    }
+
+    .prescriptions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .prescription-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 5px solid #0d6efd;
+    }
+
+    .prescription-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .prescription-id {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .prescription-date {
+      font-size: 0.95rem;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .prescription-body {
+      margin-top: 15px;
+    }
+
+    .prescription-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .prescription-label {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .prescription-value {
+      color: #333;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .prescription-medicines {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state-text {
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .btn-back {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .btn-back:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header') %>
+    <main class="main-content">
+      <div class="container">
+        <a href="/appointments/doctor/<%= userid %>" class="btn-back">← Back to Appointments</a>
+        
+        <div class="page-header">
+          <h1 class="page-title">📋 Prescription History</h1>
+          <p class="student-info"><strong>Student:</strong> <%= studentName %> (ID: <%= studentId %>)</p>
+        </div>
+
+        <% if (prescriptions && prescriptions.length > 0) { %>
+          <div class="prescriptions-list">
+            <% prescriptions.forEach(prescription => { %>
+              <div class="prescription-card">
+                <div class="prescription-header">
+                  <span class="prescription-id">Prescription #<%= prescription.id %></span>
+                  <span class="prescription-date">
+                    <%= new Date(prescription.date).toLocaleDateString('en-IN', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric'
+                    }) %>
+                  </span>
+                </div>
+                
+                <div class="prescription-body">
+                  <div class="prescription-row">
+                    <div class="prescription-label">Category:</div>
+                    <div class="prescription-value">
+                      <% if (prescription.category === 'general') { %>
+                        <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+                          📋 GENERAL
+                        </span>
+                      <% } else { %>
+                        <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+                          🔒 <%= (prescription.category || 'specialized').toUpperCase() %>
+                        </span>
+                      <% } %>
+                    </div>
+                  </div>
+
+                  <div class="prescription-row">
+                    <div class="prescription-label">Diagnosis:</div>
+                    <div class="prescription-value"><%= prescription.diagnosis %></div>
+                  </div>
+
+                  <div class="prescription-row">
+                    <div class="prescription-label">Medicines:</div>
+                    <div class="prescription-medicines"><%= prescription.medicines %></div>
+                  </div>
+
+                  <% if (prescription.notes) { %>
+                    <div class="prescription-row">
+                      <div class="prescription-label">Notes:</div>
+                      <div class="prescription-value"><%= prescription.notes %></div>
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p class="empty-state-text">No prescription history found for this student.</p>
+          </div>
+        <% } %>
+      </div>
+    </main>
+    <%- include('../partials/footer') %>
+</body>
+
+</html>

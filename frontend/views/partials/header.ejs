@@ -8,5 +8,14 @@
   </div>
   <nav class="nav-buttons">
   <%- typeof navHtml !== 'undefined' ? navHtml : '' %>
+  <% 
+    var __uid = (typeof userid !== 'undefined' && userid) 
+      ? userid 
+      : (typeof user !== 'undefined' && user && user.id ? user.id : null);
+  %>
+  <% if (__uid) { %>
+    <a href="/users/<%= __uid %>" class="btn">DASHBOARD</a>
+  <% } %>
+  <a href="/logout" class="btn">LOG OUT</a>
   </nav>
 </header>
