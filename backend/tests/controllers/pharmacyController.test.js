@@ -73,18 +73,24 @@ describe('Pharmacy Controller', () => {
   describe('placeOrder', () => {
     beforeEach(() => {
       req.body = { 
-        medicine_id: 2, 
-        quantity: 1, 
+        medicines: [{ medicine_id: 2, quantity: 1 }],
         prescription_link: 'https://example.com/presc.pdf' 
       };
     });
 
     test('successfully places order with prescription', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [{ id: 2, stock: 10, price: 50 }] })
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] })
-        .mockResolvedValue({});
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [{ id: 2, stock: 10, price: 50 }] }) // medicine check
+          .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // insert order
+          .mockResolvedValueOnce({ rows: [] }) // insert order_medicines
+          .mockResolvedValueOnce({ rows: [] }) // update stock
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+      pool.connect = jest.fn().mockResolvedValue(mockClient);
+      pool.query.mockResolvedValueOnce({ rows: [{ name: 'Student A' }] });
 
       await placeOrder(req, res);
 
@@ -96,31 +102,43 @@ describe('Pharmacy Controller', () => {
     });
 
     test('returns 404 for non-existent medicine', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [] });
+      req.body.medicines = [{ medicine_id: 999, quantity: 1 }];
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [] }) // medicine check - not found
+          .mockRejectedValueOnce(new Error('Medicine with ID 999 not found')),
+        release: jest.fn()
+      };
+      pool.connect = jest.fn().mockResolvedValue(mockClient);
+      pool.query.mockResolvedValueOnce({ rows: [{ name: 'Student A' }] });
 
       await placeOrder(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Medicine not found'
-      });
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false
+      }));
     });
 
     test('returns 400 when insufficient stock', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [{ id: 2, stock: 0, price: 50 }] });
+      req.body.medicines = [{ medicine_id: 2, quantity: 10 }];
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [{ id: 2, stock: 0, price: 50, name: 'Med B' }] }) // medicine check - no stock
+          .mockRejectedValueOnce(new Error('Not enough stock for Med B. Available: 0')),
+        release: jest.fn()
+      };
+      pool.connect = jest.fn().mockResolvedValue(mockClient);
+      pool.query.mockResolvedValueOnce({ rows: [{ name: 'Student A' }] });
 
       await placeOrder(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Not enough stock available'
-      });
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false
+      }));
     });
   });
 

@@ -109,7 +109,7 @@ describe('availabilityController', () => {
 
 	describe('deleteAvailability', () => {
 		test('returns 400 when appointments exist', async () => {
-			const req = { user: { id: 2 }, params: { id: 5 } };
+			const req = { user: { id: 2 }, params: { id: 5 }, query: {} };
 			pool.query.mockResolvedValueOnce({ rows: [{ count: '2' }] }); // appointments check
 			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
@@ -120,11 +120,11 @@ describe('availabilityController', () => {
 		});
 
 		test('deletes availability and returns 200', async () => {
-			const req = { user: { id: 2 }, params: { id: 6 } };
+			const req = { user: { id: 2 }, params: { id: 6 }, query: {} };
 			// appointments check -> 0
 			pool.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
 			// delete query -> return deleted row
-			pool.query.mockResolvedValueOnce({ rows: [{ id: 6 }] });
+			pool.query.mockResolvedValueOnce({ rows: [{ id: 6, doctor_id: 2, date: new Date(), start_time: '09:00' }] });
 
 			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 

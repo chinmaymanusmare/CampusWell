@@ -11,7 +11,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
     beforeAll(async () => {
         // Create a test doctor
         const dRes = await request(app)
-            .post('/signup')
+            .post('/api/signup')
             .send({
                 name: 'Test Doctor',
                 email: doctorEmail,
@@ -23,7 +23,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
 
         // Login as doctor
         const dLogin = await request(app)
-            .post('/login')
+            .post('/api/login')
             .send({ email: doctorEmail, password });
         doctorToken = dLogin.body.token;
     });
@@ -113,7 +113,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
             // Create a test student to book appointments
             const studentEmail = `student${timestamp}@example.com`;
             await request(app)
-                .post('/signup')
+                .post('/api/signup')
                 .send({
                     name: 'Test Student',
                     email: studentEmail,
@@ -123,7 +123,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
                 });
 
             const studentLogin = await request(app)
-                .post('/login')
+                .post('/api/login')
                 .send({ email: studentEmail, password });
             const studentToken = studentLogin.body.token;
 
@@ -136,7 +136,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
             for (let i = 0; i < 7; i++) {
                 const studentEmail = `student${i}${timestamp}@example.com`;
                 await request(app)
-                    .post('/signup')
+                    .post('/api/signup')
                     .send({
                         name: `Test Student ${i}`,
                         email: studentEmail,
@@ -146,7 +146,7 @@ describe('Doctor Time Per Patient Integration Tests', () => {
                     });
 
                 const studLogin = await request(app)
-                    .post('/login')
+                    .post('/api/login')
                     .send({ email: studentEmail, password });
 
                 lastResponse = await request(app)

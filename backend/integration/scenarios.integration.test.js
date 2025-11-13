@@ -22,19 +22,19 @@ describe('Integration scenarios: bookings, slot-boundary, visibility', () => {
 
   beforeAll(async () => {
     // create users
-    await request(app).post('/signup').send({ name: 'Int Student A', email: studentEmail, password: 'Passw0rd1', role: 'student', roll_no: 'R1' });
-    await request(app).post('/signup').send({ name: 'Int Student B', email: studentEmail2, password: 'Passw0rd1', role: 'student', roll_no: 'R2' });
+    await request(app).post('/api/signup').send({ name: 'Int Student A', email: studentEmail, password: 'Passw0rd1', role: 'student', roll_no: 'R1' });
+    await request(app).post('/api/signup').send({ name: 'Int Student B', email: studentEmail2, password: 'Passw0rd1', role: 'student', roll_no: 'R2' });
 
-  await request(app).post('/signup').send({ name: doctorName, email: doctorEmail, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
-  await request(app).post('/signup').send({ name: doctorName2, email: doctorEmail2, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
-  await request(app).post('/signup').send({ name: doctorName3, email: doctorEmail3, password: 'Passw0rd1', role: 'doctor', specialization: 'cardio', timePerPatient: 15 });
+  await request(app).post('/api/signup').send({ name: doctorName, email: doctorEmail, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
+  await request(app).post('/api/signup').send({ name: doctorName2, email: doctorEmail2, password: 'Passw0rd1', role: 'doctor', specialization: 'gynac', timePerPatient: 15 });
+  await request(app).post('/api/signup').send({ name: doctorName3, email: doctorEmail3, password: 'Passw0rd1', role: 'doctor', specialization: 'cardio', timePerPatient: 15 });
 
     // login
-    const l1 = await request(app).post('/login').send({ email: studentEmail, password: 'Passw0rd1' });
-    const l2 = await request(app).post('/login').send({ email: studentEmail2, password: 'Passw0rd1' });
-    const ld = await request(app).post('/login').send({ email: doctorEmail, password: 'Passw0rd1' });
-    const ld2 = await request(app).post('/login').send({ email: doctorEmail2, password: 'Passw0rd1' });
-    const ld3 = await request(app).post('/login').send({ email: doctorEmail3, password: 'Passw0rd1' });
+    const l1 = await request(app).post('/api/login').send({ email: studentEmail, password: 'Passw0rd1' });
+    const l2 = await request(app).post('/api/login').send({ email: studentEmail2, password: 'Passw0rd1' });
+    const ld = await request(app).post('/api/login').send({ email: doctorEmail, password: 'Passw0rd1' });
+    const ld2 = await request(app).post('/api/login').send({ email: doctorEmail2, password: 'Passw0rd1' });
+    const ld3 = await request(app).post('/api/login').send({ email: doctorEmail3, password: 'Passw0rd1' });
 
     studentToken = l1.body.token;
     studentToken2 = l2.body.token;

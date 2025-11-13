@@ -15,7 +15,7 @@ exports.getInventory = async (req, res) => {
       data: result.rows
     });
   } catch (err) {
-    console.error("Error fetching inventory:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error fetching inventory:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -43,7 +43,7 @@ exports.updateInventoryItem = async (req, res) => {
       data: result.rows[0]
     });
   } catch (err) {
-    console.error("Error updating inventory:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error updating inventory:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -152,7 +152,7 @@ exports.placeOrder = async (req, res) => {
       client.release();
     }
   } catch (err) {
-    console.error("Error placing order:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error placing order:", err);
     res.status(500).json({ 
       success: false, 
       message: err.message || "Server error" 
@@ -175,7 +175,7 @@ exports.getAllOrders = async (req, res) => {
       data: result.rows
     });
   } catch (err) {
-    console.error("Error fetching orders:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error fetching orders:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -198,7 +198,7 @@ exports.getStudentOrders = async (req, res) => {
       data: result.rows
     });
   } catch (err) {
-    console.error("Error fetching student orders:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error fetching student orders:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -225,7 +225,7 @@ exports.updateOrderStatus = async (req, res) => {
       data: result.rows[0]
     });
   } catch (err) {
-    console.error("Error updating order status:", err);
+    if (process.env.NODE_ENV !== 'test') console.error("Error updating order status:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

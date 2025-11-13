@@ -16,11 +16,11 @@ describe('Appointments integration tests', () => {
 
   beforeAll(async () => {
     // create users via signup endpoints (exercise full stack)
-    await request(app).post('/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
-    await request(app).post('/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
+    await request(app).post('/api/signup').send({ name: 'Int Student', email: studentEmail, password: pwd, role: 'student', roll_no: 'R100' });
+    await request(app).post('/api/signup').send({ name: 'Int Doctor', email: doctorEmail, password: pwd, role: 'doctor', timePerPatient: 15 });
 
     // login doctor and set availability so appointments can be booked
-    const dLogin = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
+    const dLogin = await request(app).post('/api/login').send({ email: doctorEmail, password: pwd });
     const doctorToken = dLogin.body && dLogin.body.token;
     if (doctorToken) {
       await request(app)
@@ -44,7 +44,7 @@ describe('Appointments integration tests', () => {
 
   test('student can book, view and doctor can view then reschedule appointment', async () => {
     // login student
-    const lres = await request(app).post('/login').send({ email: studentEmail, password: pwd });
+    const lres = await request(app).post('/api/login').send({ email: studentEmail, password: pwd });
     const studentToken = lres.body && lres.body.token;
     expect(lres.statusCode).toBe(200);
 
@@ -62,7 +62,7 @@ describe('Appointments integration tests', () => {
     expect(studView.statusCode).toBe(200);
 
     // login doctor
-    const ld = await request(app).post('/login').send({ email: doctorEmail, password: pwd });
+    const ld = await request(app).post('/api/login').send({ email: doctorEmail, password: pwd });
     const doctorToken = ld.body && ld.body.token;
     expect(ld.statusCode).toBe(200);
 
