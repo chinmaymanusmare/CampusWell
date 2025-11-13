@@ -51,7 +51,7 @@ exports.webLogin = async (req, res) => {
 
 // Web-based signup
 exports.webSignup = async (req, res) => {
-  const { name, email, password, role, roll_no, specialization, timePerPatient } = req.body;
+  const { name, email, password, roll_no } = req.body;
 
   // Validate password
   if (!password) {
@@ -64,18 +64,24 @@ exports.webSignup = async (req, res) => {
   }
 
   try {
-    const existinguser = await pool.query("SELECT * FROM public.users WHERE email = $1;", [email]);
+  const existinguser = await pool.query("SELECT * FROM public.users WHERE email = $1;", [email]);
 
     if (existinguser.rows.length > 0) {
       return res.status(400).send('<h1>User already exists</h1><a href="/login">Login instead</a>');
     }
 
-    const saltRounds = 10;
+  const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Student-only signup: force role to 'student' and ignore non-student fields
+    const normalizedRole = 'student';
+    const normalizedRollNo = roll_no || null;
+    const normalizedSpecialization = null;
+    const normalizedTimePerPatient = null;
 
     const result = await pool.query(
       "INSERT INTO public.users( name, email, password, role, roll_number, specialization, time_per_patient) VALUES ( $1, $2, $3, $4, $5, $6, $7) RETURNING *;",
-      [name, email, hashedPassword, role, roll_no, specialization, timePerPatient]
+      [name, email, hashedPassword, normalizedRole, normalizedRollNo, normalizedSpecialization, normalizedTimePerPatient]
     );
 
     const user = result.rows[0];

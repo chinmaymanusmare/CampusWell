@@ -59,6 +59,11 @@
           <h1 class="title">Past Concerns</h1>
           <a href="/concerns/newconcern/<%= userid %>" class="btn">New Post</a>
         </div>
+        <% if (typeof success !== 'undefined' && success) { %>
+          <div class="card" style="background:#e8ffe8;border-color:#b6e3b6;">
+            <strong><%= success %></strong>
+          </div>
+        <% } %>
         <% if ((concerns||[]).length) { %>
           <% concerns.forEach(c=> { %>
             <div class="card">

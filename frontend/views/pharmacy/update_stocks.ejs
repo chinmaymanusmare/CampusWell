@@ -58,7 +58,17 @@
     <main class="main-content">
       <div class="form-container">
         <h2 class="form-title">Update Stock</h2>
-        <form action="/update-stock" method="POST">
+        <% if (success === 'updated') { %>
+          <div class="alert" style="background:#e8ffe8; border:1px solid #b6e3b6; padding:10px; border-radius:6px; margin-bottom:12px;">
+            <strong>Stock updated successfully.</strong>
+          </div>
+        <% } %>
+        <% if (error) { %>
+          <div class="alert" style="background:#fff4e5; border:1px solid #ffd6a6; padding:10px; border-radius:6px; margin-bottom:12px;">
+            <strong>Error:</strong> <%= error %>
+          </div>
+        <% } %>
+        <form action="/pharmacy/stocks/<%= userid %>/update" method="POST">
           <div class="form-group">
             <label for="medicine_id">Medicine</label>
             <select id="medicine_id" name="medicine_id" required>
@@ -73,6 +83,10 @@
           <div class="form-group">
             <label for="quantity">Quantity to Add</label>
             <input type="number" id="quantity" name="quantity" placeholder="e.g. 50 or -10" required />
+          </div>
+          <div class="form-group">
+            <label for="price">New Price (optional)</label>
+            <input type="number" id="price" name="price" min="0" placeholder="e.g. 120" />
           </div>
           <div class="actions">
             <button type="submit" class="btn">Update</button><br />

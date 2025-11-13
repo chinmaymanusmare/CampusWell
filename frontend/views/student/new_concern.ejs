@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Concern</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .container { max-width: 800px; margin: 30px auto; padding: 20px; }
+    .title { font-size: 1.8rem; font-weight: 600; margin-bottom: 16px; }
+    .form-card { background:#f7f7f7; border:1px solid #ddd; border-radius:8px; padding:18px; }
+    .form-row { display:flex; gap:12px; margin-bottom:12px; align-items:center; }
+    .form-row label { width: 140px; font-weight:600; }
+    .form-row select, .form-row textarea, .form-row input { flex:1; padding:10px; border:1px solid #aaa; border-radius:6px; }
+    .actions { margin-top: 12px; display:flex; gap:10px; }
+    .btn-primary { background:#0d6efd; color:#fff; text-decoration:none; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer; }
+    .btn-secondary { background:#6c757d; color:#fff; text-decoration:none; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer; }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/header') %>
+  <main class="main-content">
+    <div class="container">
+      <h1 class="title">Create New Concern</h1>
+      <div class="form-card">
+        <form action="/concerns/newconcern" method="POST">
+          <input type="hidden" name="student_id" value="<%= userid %>" />
+          <div class="form-row">
+            <label for="category">Category</label>
+            <select id="category" name="category" required>
+              <option value="">Select Category</option>
+              <option value="General Physician">General Physician</option>
+              <option value="Paediatrician">Paediatrician</option>
+              <option value="Consultant Psychiatrist">Consultant Psychiatrist</option>
+              <option value="Physiotherapist">Physiotherapist</option>
+              <option value="Doctor of Medicine in Homoeopathy">Doctor of Medicine in Homoeopathy</option>
+              <option value="Psychiatrist">Psychiatrist</option>
+              <option value="Psychologist">Psychologist</option>
+              <option value="Counselor">Counselor</option>
+              <option value="Dentist">Dentist</option>
+              <option value="ENT Specialist">ENT Specialist</option>
+              <option value="Orthopedic">Orthopedic</option>
+              <option value="Dermatologist">Dermatologist</option>
+              <option value="Cardiologist">Cardiologist</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" placeholder="Describe your concern" required></textarea>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn-primary">Submit</button>
+            <a href="/concerns/<%= userid %>" class="btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <%- include('../partials/footer') %>
+</body>
+
+</html>

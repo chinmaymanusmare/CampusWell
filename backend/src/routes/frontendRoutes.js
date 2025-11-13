@@ -450,10 +450,98 @@ router.get('/concerns/:id', auth, async (req, res) => {
 
         res.render('student/anonymous_concern', { 
             userid: userId,
-            concerns: concernsResult.rows
+            concerns: concernsResult.rows,
+            success: req.query.success === 'true' ? 'Concern submitted successfully!' : null
         });
     } catch (error) {
         console.error('Error loading concern page:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Anonymous concern - new post form
+router.get('/concerns/newconcern/:id', auth, async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        if (req.user.id != userId || req.user.role !== 'student') {
+            return res.status(403).render('error/403');
+        }
+
+        res.render('student/new_concern', { userid: userId });
+    } catch (error) {
+        console.error('Error loading new concern form:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Anonymous concern - create (uses API controller)
+router.post('/concerns/newconcern', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'student') {
+            return res.status(403).render('error/403');
+        }
+
+        const concernController = require('../controllers/concernController');
+
+        // Create mock req/res to call API controller
+        const mockReq = {
+            user: req.user,
+            body: { category: req.body.category, message: req.body.message }
+        };
+
+        let success = false;
+        const mockRes = {
+            status: (code) => ({
+                json: (data) => {
+                    success = data.success;
+                }
+            })
+        };
+
+        await concernController.submitConcern(mockReq, mockRes);
+
+        if (success) {
+            return res.redirect(`/concerns/${req.user.id}?success=true`);
+        }
+
+        res.status(500).send('Failed to submit concern');
+    } catch (error) {
+        console.error('Error submitting concern:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Doctor - respond to concerns (POST handler)
+router.post('/respond-concerns', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const { concern_id, response } = req.body;
+        const concernController = require('../controllers/concernController');
+
+        const mockReq = {
+            user: req.user,
+            params: { id: concern_id },
+            body: { reply: response }
+        };
+
+        let success = false;
+        const mockRes = {
+            status: (code) => ({
+                json: (data) => {
+                    success = data.success;
+                }
+            })
+        };
+
+        await concernController.replyToConcern(mockReq, mockRes);
+
+        return res.redirect(`/concerns/doctor/${req.user.id}`);
+    } catch (error) {
+        console.error('Error responding to concern:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -798,12 +886,72 @@ router.get('/pharmacy/orders/:id', auth, async (req, res) => {
             'SELECT * FROM orders ORDER BY ordered_at DESC'
         );
 
+        // For each order, fetch the medicines
+        const ordersWithMedicines = await Promise.all(
+            ordersResult.rows.map(async (order) => {
+                const medicinesResult = await pool.query(
+                    `SELECT 
+                        om.medicine_id,
+                        om.quantity,
+                        m.name,
+                        m.price,
+                        m.description
+                     FROM order_medicines om
+                     LEFT JOIN medicines m ON om.medicine_id = m.id
+                     WHERE om.order_id = $1`,
+                    [order.id]
+                );
+                return {
+                    ...order,
+                    medicines: medicinesResult.rows
+                };
+            })
+        );
+
         res.render('pharmacy/view_orders', { 
             userid: pharmacistId,
-            orders: ordersResult.rows
+            orders: ordersWithMedicines,
+            success: req.query.success || null
         });
     } catch (error) {
         console.error('Error loading orders:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Pharmacist - update order status (ready -> completed transitions)
+router.post('/pharmacy/orders/:id/status', auth, async (req, res) => {
+    try {
+        const pharmacistId = req.params.id;
+        
+        if (req.user.id != pharmacistId || req.user.role !== 'pharmacy') {
+            return res.status(403).render('error/403');
+        }
+
+        const { order_id, action } = req.body;
+
+        // Validate order exists
+        const orderRes = await pool.query('SELECT status FROM orders WHERE id = $1', [order_id]);
+        if (orderRes.rows.length === 0) {
+            return res.status(404).send('Order not found');
+        }
+
+        const currentStatus = orderRes.rows[0].status;
+        let nextStatus = null;
+    if (action === 'ready' && currentStatus === 'pending') nextStatus = 'ready';
+    // Map 'completed' action to valid DB status 'collected'
+    if (action === 'completed' && (currentStatus === 'ready' || currentStatus === 'pending')) nextStatus = 'collected';
+
+        if (!nextStatus) {
+            return res.redirect(`/pharmacy/orders/${pharmacistId}?success=invalid_transition`);
+        }
+
+        await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [nextStatus, order_id]);
+
+    const success = nextStatus === 'ready' ? 'ready' : 'completed';
+        res.redirect(`/pharmacy/orders/${pharmacistId}?success=${success}`);
+    } catch (error) {
+        console.error('Error updating order status:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -824,10 +972,61 @@ router.get('/pharmacy/stocks/:id', auth, async (req, res) => {
 
         res.render('pharmacy/update_stocks', { 
             userid: pharmacistId,
-            medicines: medicinesResult.rows
+            medicines: medicinesResult.rows,
+            success: req.query.success || null,
+            error: req.query.error || null
         });
     } catch (error) {
         console.error('Error loading stocks page:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Pharmacist - update stock quantity and optionally price
+router.post('/pharmacy/stocks/:id/update', auth, async (req, res) => {
+    try {
+        const pharmacistId = req.params.id;
+        
+        if (req.user.id != pharmacistId || req.user.role !== 'pharmacy') {
+            return res.status(403).render('error/403');
+        }
+
+        const { medicine_id, quantity, price } = req.body;
+
+        // Basic validation
+        const medId = parseInt(medicine_id, 10);
+        const qty = parseInt(quantity, 10);
+        const newPrice = price !== undefined && price !== '' ? parseInt(price, 10) : null;
+
+        if (!medId || isNaN(qty)) {
+            return res.redirect(`/pharmacy/stocks/${pharmacistId}?error=invalid_input`);
+        }
+
+        // Ensure medicine exists
+        const medRes = await pool.query('SELECT id FROM medicines WHERE id = $1', [medId]);
+        if (medRes.rows.length === 0) {
+            return res.redirect(`/pharmacy/stocks/${pharmacistId}?error=medicine_not_found`);
+        }
+
+        if (newPrice !== null && (isNaN(newPrice) || newPrice < 0)) {
+            return res.redirect(`/pharmacy/stocks/${pharmacistId}?error=invalid_price`);
+        }
+
+        if (newPrice !== null) {
+            await pool.query(
+                'UPDATE medicines SET stock = GREATEST(stock + $1, 0), price = $2 WHERE id = $3',
+                [qty, newPrice, medId]
+            );
+        } else {
+            await pool.query(
+                'UPDATE medicines SET stock = GREATEST(stock + $1, 0) WHERE id = $2',
+                [qty, medId]
+            );
+        }
+
+        return res.redirect(`/pharmacy/stocks/${pharmacistId}?success=updated`);
+    } catch (error) {
+        console.error('Error updating stock:', error);
         res.status(500).send('Internal server error');
     }
 });
@@ -854,16 +1053,16 @@ router.post('/admin/add-doctor', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        const { name, email, username, password, specialization, phone, timePerPatient } = req.body;
+    const { name, email, password, specialization, timePerPatient } = req.body;
 
         // Call the API endpoint to create the user
         const bcrypt = require('bcryptjs');
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newDoctor = await pool.query(
-            `INSERT INTO users (name, email, username, password, role, specialization, phone, time_per_patient) 
-             VALUES ($1, $2, $3, $4, 'doctor', $5, $6, $7) RETURNING id`,
-            [name, email, username, hashedPassword, specialization, phone || null, timePerPatient || 15]
+            `INSERT INTO users (name, email, password, role, specialization, time_per_patient) 
+             VALUES ($1, $2, $3, 'doctor', $4, $5) RETURNING id`,
+            [name, email, hashedPassword, specialization, timePerPatient || 15]
         );
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
@@ -876,7 +1075,7 @@ router.post('/admin/add-doctor', auth, async (req, res) => {
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         res.render('admin/add_doctor', { 
             user: userResult.rows[0], 
-            error: error.message || 'Failed to add doctor. Email or username may already exist.' 
+            error: error.message || 'Failed to add doctor. Email may already exist.' 
         });
     }
 });
@@ -903,15 +1102,15 @@ router.post('/admin/add-pharmacist', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        const { name, email, username, password, phone, pharmacy_note } = req.body;
+    const { name, email, password } = req.body;
 
         const bcrypt = require('bcryptjs');
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newPharmacist = await pool.query(
-            `INSERT INTO users (name, email, username, password, role, phone, pharmacy_note) 
-             VALUES ($1, $2, $3, $4, 'pharmacy', $5, $6) RETURNING id`,
-            [name, email, username, hashedPassword, phone || null, pharmacy_note || null]
+            `INSERT INTO users (name, email, password, role) 
+             VALUES ($1, $2, $3, 'pharmacy') RETURNING id`,
+            [name, email, hashedPassword]
         );
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
@@ -924,7 +1123,7 @@ router.post('/admin/add-pharmacist', auth, async (req, res) => {
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         res.render('admin/add_pharmacist', { 
             user: userResult.rows[0], 
-            error: error.message || 'Failed to add pharmacist. Email or username may already exist.' 
+            error: error.message || 'Failed to add pharmacist. Email may already exist.' 
         });
     }
 });
@@ -938,7 +1137,7 @@ router.get('/admin/remove-doctor', auth, async (req, res) => {
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const doctorsResult = await pool.query(
-            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+            "SELECT id, name, email, specialization FROM users WHERE role = 'doctor' ORDER BY name"
         );
         
         res.render('admin/remove_doctor', { 
@@ -965,7 +1164,7 @@ router.post('/admin/remove-doctor', auth, async (req, res) => {
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const doctorsResult = await pool.query(
-            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+            "SELECT id, name, email, specialization FROM users WHERE role = 'doctor' ORDER BY name"
         );
         
         res.render('admin/remove_doctor', { 
@@ -977,7 +1176,7 @@ router.post('/admin/remove-doctor', auth, async (req, res) => {
         console.error('Error removing doctor:', error);
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const doctorsResult = await pool.query(
-            "SELECT id, name, email, specialization, phone FROM users WHERE role = 'doctor' ORDER BY name"
+            "SELECT id, name, email, specialization FROM users WHERE role = 'doctor' ORDER BY name"
         );
         
         res.render('admin/remove_doctor', { 
@@ -997,7 +1196,7 @@ router.get('/admin/remove-pharmacist', auth, async (req, res) => {
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const pharmacistsResult = await pool.query(
-            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+            "SELECT id, name, email FROM users WHERE role = 'pharmacy' ORDER BY name"
         );
         
         res.render('admin/remove_pharmacist', { 
@@ -1024,7 +1223,7 @@ router.post('/admin/remove-pharmacist', auth, async (req, res) => {
 
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const pharmacistsResult = await pool.query(
-            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+            "SELECT id, name, email FROM users WHERE role = 'pharmacy' ORDER BY name"
         );
         
         res.render('admin/remove_pharmacist', { 
@@ -1036,7 +1235,7 @@ router.post('/admin/remove-pharmacist', auth, async (req, res) => {
         console.error('Error removing pharmacist:', error);
         const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
         const pharmacistsResult = await pool.query(
-            "SELECT id, name, email, username, phone FROM users WHERE role = 'pharmacy' ORDER BY name"
+            "SELECT id, name, email FROM users WHERE role = 'pharmacy' ORDER BY name"
         );
         
         res.render('admin/remove_pharmacist', { 

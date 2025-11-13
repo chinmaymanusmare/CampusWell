@@ -25,6 +25,8 @@
       border: 1px solid #ddd;
       border-radius: 8px;
       margin-bottom: 16px;
+      width : 1200px;
+      margin-left: -150px;
     }
 
     .row {
@@ -54,34 +56,150 @@
     <main class="main-content">
       <div class="container">
         <h1 class="title">Orders</h1>
+        <% if (success === 'ready') { %>
+          <div class="card" style="background:#e8f5ff;border-color:#b6d7ff;"><strong>Order marked ready for pickup.</strong></div>
+        <% } %>
+        <% if (success === 'completed') { %>
+          <div class="card" style="background:#e8ffe8;border-color:#b6e3b6;"><strong>Order marked completed.</strong></div>
+        <% } %>
+        <% if (success === 'invalid_transition') { %>
+          <div class="card" style="background:#fff4e5;border-color:#ffd6a6;"><strong>Invalid status transition.</strong></div>
+        <% } %>
+
         <% if ((orders||[]).length) { %>
-          <% orders.forEach(o=> { %>
-            <div class="card">
-              <div class="row"><strong>Order ID:</strong> <span>
-                  <%= o.id %>
-                </span></div>
-              <div class="row"><strong>Name:</strong> <span>
-                  <%= o.student_name %>
-                </span></div>
-              <div class="row"><strong>Phone No.:</strong> <span>
-                  <%= o.phone %>
-                </span></div>
-              <div class="row"><strong>Order Details:</strong> <span>
-                  <%= o.order_details %>
-                </span></div>
-              <form action="/complete-order" method="POST" class="action">
-                <input type="hidden" name="order_id" value="<%= o.id %>" />
-                <button type="submit" class="btn">Completed</button>
-              </form>
+          <div class="card" style="margin-bottom:16px;">
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+              <div style="flex:1; min-width:220px;">
+                <label for="filterName" style="display:block; font-weight:600; margin-bottom:6px;">Filter by Student Name</label>
+                <input id="filterName" type="text" placeholder="Type a name..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+              </div>
+              <div style="width:220px;">
+                <label for="filterStatus" style="display:block; font-weight:600; margin-bottom:6px;">Status</label>
+                <select id="filterStatus" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                  <option value="all_except_collected" selected>All (except collected)</option>
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="ready">Ready</option>
+                  <option value="collected">Collected</option>
+                  <option value="dispatched">Dispatched</option>
+                </select>
+              </div>
+              <div style="margin-left:auto; font-weight:600;">
+                <span>Showing </span><span id="showingCount">0</span><span> of </span><span id="totalCount"><%= orders.length %></span>
+              </div>
             </div>
-            <% }) %>
-              <% } else { %>
-                <p>No pending orders.</p>
-                <% } %>
-                  
+          </div>
+          <div class="card">
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                  <tr style="background:#f8f8f8;">
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Order ID</th>
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Student</th>
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Ordered At</th>
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd; min-width:380px;">Items (Qty x Price = Subtotal)</th>
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Prescription</th>
+                    <th style="text-align:right; padding:8px; border-bottom:1px solid #ddd;">Total</th>
+                    <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Status</th>
+                    <th style="text-align:center; padding:8px; border-bottom:1px solid #ddd;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTbody">
+                  <% orders.forEach(o => { %>
+                    <tr class="order-row" data-status="<%= (o.status || '').toLowerCase() %>" data-student="<%= (o.student_name || '').toLowerCase() %>">
+                      <td style="padding:8px; border-bottom:1px solid #eee;">#<%= o.id %></td>
+                      <td style="padding:8px; border-bottom:1px solid #eee;"><%= o.student_name %></td>
+                      <td style="padding:8px; border-bottom:1px solid #eee;"><%= new Date(o.ordered_at).toLocaleString() %></td>
+                      <td style="padding:8px; border-bottom:1px solid #eee; min-width:380px;">
+                        <% if ((o.medicines||[]).length) { %>
+                          <ul style="margin:0; padding-left:16px;">
+                            <% o.medicines.forEach(m => { %>
+                              <li>
+                                <%= m.name %> — <strong><%= m.quantity %></strong> x ₹<%= m.price %> = ₹<%= (m.quantity * m.price) %>
+                              </li>
+                            <% }) %>
+                          </ul>
+                        <% } else { %>
+                          <em>No items</em>
+                        <% } %>
+                      </td>
+                      <td style="padding:8px; border-bottom:1px solid #eee;">
+                        <% if (o.prescription_link) { %>
+                          <a href="<%= o.prescription_link %>" target="_blank" class="btn" style="background:#6c757d;">View</a>
+                        <% } else { %>
+                          <em>-</em>
+                        <% } %>
+                      </td>
+                      <td style="padding:8px; border-bottom:1px solid #eee; text-align:right; font-weight:600;">₹<%= o.total %></td>
+                      <td style="padding:8px; border-bottom:1px solid #eee; text-transform:capitalize;"><%= o.status %></td>
+                      <td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">
+                        <% if (o.status === 'pending') { %>
+                          <form action="/pharmacy/orders/<%= userid %>/status" method="POST" style="display:inline-block;">
+                            <input type="hidden" name="order_id" value="<%= o.id %>" />
+                            <input type="hidden" name="action" value="ready" />
+                            <button type="submit" class="btn">Mark Ready</button>
+                          </form>
+                        <% } %>
+                        <% if (o.status === 'ready' || o.status === 'pending') { %>
+                          <form action="/pharmacy/orders/<%= userid %>/status" method="POST" style="display:inline-block; margin-left:6px;">
+                            <input type="hidden" name="order_id" value="<%= o.id %>" />
+                            <input type="hidden" name="action" value="completed" />
+                            <button type="submit" class="btn" style="background:#28a745;">Mark Completed</button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% } else { %>
+          <p>No orders found.</p>
+        <% } %>
       </div>
     </main>
-    <%- include('../partials/footer') %>
+      <script>
+        (function(){
+          const nameInput = document.getElementById('filterName');
+          const statusSelect = document.getElementById('filterStatus');
+          const rows = Array.from(document.querySelectorAll('.order-row'));
+          const showingEl = document.getElementById('showingCount');
+          const totalEl = document.getElementById('totalCount');
+
+          function applyFilters() {
+            const nameQ = (nameInput?.value || '').trim().toLowerCase();
+            const statusQ = (statusSelect?.value || 'all_except_collected').toLowerCase();
+            let shown = 0;
+            rows.forEach(row => {
+              const rowName = (row.getAttribute('data-student') || '');
+              const rowStatus = (row.getAttribute('data-status') || '');
+
+              const matchesName = !nameQ || rowName.includes(nameQ);
+              let matchesStatus = true;
+              if (statusQ === 'all') {
+                matchesStatus = true;
+              } else if (statusQ === 'all_except_collected') {
+                matchesStatus = rowStatus !== 'collected';
+              } else {
+                matchesStatus = rowStatus === statusQ;
+              }
+
+              const show = matchesName && matchesStatus;
+              row.style.display = show ? '' : 'none';
+              if (show) shown++;
+            });
+            if (showingEl) showingEl.textContent = String(shown);
+            if (totalEl) totalEl.textContent = String(rows.length);
+          }
+
+          if (nameInput) nameInput.addEventListener('input', applyFilters);
+          if (statusSelect) statusSelect.addEventListener('change', applyFilters);
+          // initial render: exclude collected by default
+          applyFilters();
+        })();
+      </script>
+      <%- include('../partials/footer') %>
 </body>
 
 </html>
