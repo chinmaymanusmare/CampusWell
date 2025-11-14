@@ -33,8 +33,9 @@ const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Frontend routes will be mounted after API routes to avoid path collisions
+// Frontend routes (must come before API routes to serve pages)
 const frontendRoutes = require('./routes/frontendRoutes');
+app.use('/', frontendRoutes);
 
 // Web authentication routes (for form-based login/signup)
 const { webLogin, webSignup, webLogout } = require('./controllers/webAuthController');
@@ -73,9 +74,6 @@ app.use("/admin", adminRoutes);
 
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/notifications", notificationRoutes);
-
-// Mount frontend routes after APIs to prevent API path collisions
-app.use('/', frontendRoutes);
 
 // 404 Error Handler - Must be after all other routes
 app.use((req, res, next) => {
