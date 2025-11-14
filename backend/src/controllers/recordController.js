@@ -40,17 +40,34 @@ exports.getStudentRecordForDoctor = async (req, res) => {
     );
     const doctorSpec = (doctorRes.rows[0] && doctorRes.rows[0].specialization) || null;
 
+    console.log('=== DEBUG getStudentRecordForDoctor ===');
+    console.log('Doctor ID:', req.user.id);
+    console.log('Doctor Specialization:', doctorSpec);
+    console.log('Student ID:', studentId);
+
+    // First, let's see ALL prescriptions for this student
+    const allPrescriptions = await pool.query(
+      `SELECT p.id, p.doctor_name, p.date, p.medicines, p.diagnosis, p.notes, p.category
+       FROM prescriptions p
+       WHERE p.student_id = $1
+       ORDER BY p.date DESC`,
+      [studentId]
+    );
+    console.log('All prescriptions for student:', allPrescriptions.rows);
+
     // Select all general records plus specialized records matching the doctor's specialization
+    // Use LOWER() for case-insensitive comparison
     const result = await pool.query(
       `SELECT p.id, p.doctor_name, p.date, p.medicines, p.diagnosis, p.notes, p.category
        FROM prescriptions p
-       LEFT JOIN users u ON u.name = p.doctor_name
        WHERE p.student_id = $1
-       AND (p.category = 'general' OR 
-            (p.category = 'specialized' AND u.specialization = $2))
+       AND (LOWER(p.category) = 'general' OR LOWER(p.category) = LOWER($2))
        ORDER BY p.date DESC`,
       [studentId, doctorSpec]
     );
+
+    console.log('Filtered prescriptions:', result.rows);
+    console.log('=== END DEBUG ===');
 
     res.status(200).json({
       success: true,
@@ -77,10 +94,10 @@ exports.addHealthRecord = async (req, res) => {
   const { student_id, diagnosis, notes, medicines, category } = req.body;
 
   try {
-    // Default to general if not specialized
-    let finalCategory = (doctorSpec === 'general' || !doctorSpec) ? 'general' : doctorSpec;
-
-    // Override with provided category if valid
+    // Default to doctor's specialization, or 'general' if not specialized
+    let finalCategory = doctorSpec || 'general';
+    
+    // If category is explicitly provided (e.g., 'general' from checkbox), use it
     if (category) {
       finalCategory = category;
     }

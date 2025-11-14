@@ -73,6 +73,7 @@
       grid-template-columns: 140px 1fr;
       gap: 10px;
       margin-bottom: 12px;
+      align-items: start;
     }
 
     .prescription-label {
@@ -83,7 +84,26 @@
     .prescription-value {
       color: #333;
       line-height: 1.6;
-      white-space: pre-wrap;
+      /* white-space: pre-wrap; */
+    }
+
+    .category-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .category-general {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .category-specialized {
+      background: #fff3cd;
+      color: #856404;
     }
 
     .prescription-medicines {
@@ -162,13 +182,12 @@
                     <div class="prescription-label">Category:</div>
                     <div class="prescription-value">
                       <% if (prescription.category === 'general') { %>
-                        <span >
-                          📋 GENERAL
-                          <!-- style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;"  -->
+                        <span class="category-badge category-general">
+                          GENERAL
                         </span>
                       <% } else { %>
-                        <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
-                          🔒 <%= (prescription.category || 'specialized').toUpperCase() %>
+                        <span class="category-badge category-specialized">
+                           <%= (prescription.category || 'specialized').toUpperCase() %>
                         </span>
                       <% } %>
                     </div>
