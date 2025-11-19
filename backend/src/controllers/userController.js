@@ -158,10 +158,22 @@ exports.updateDoctorTimePerPatient = async (req, res) => {
 };
 
 
-// exports.logout = async (req, res) => {
-  
-//   res.status(200).json({ success: true, message: "User logged out successfully" });
-// };
+
+// Get distinct specializations from users table
+exports.getDistinctSpecializations = async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT DISTINCT specialization FROM public.users WHERE specialization IS NOT NULL AND specialization <> '' ORDER BY specialization ASC;"
+    );
+    // Add 'All Specializations' option at the top
+    const specializations = result.rows.map(row => row.specialization);
+    specializations.unshift('All Specializations');
+    res.status(200).json({ success: true, data: specializations });
+  } catch (err) {
+    console.error('Error fetching specializations:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 exports.logout = (req, res) => {
   res.clearCookie('refreshToken'); // remove refresh token

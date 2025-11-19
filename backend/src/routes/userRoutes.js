@@ -29,11 +29,16 @@ const router = express.Router();
 const {
   getAllUsersForAdmin,
   getUserById,
-  updateUserById
+  updateUserById,
+  getDistinctSpecializations
 } = require('../controllers/userController');
 
 const verifyToken = require('../middleware/auth');
 const { authorize, authorizeUserOrAdmin } = require('../middleware/authorize');
+
+
+// Route to get distinct specializations (no auth required, or add auth if needed)
+router.get('/specializations/distinct', getDistinctSpecializations);
 
 router.get('/', verifyToken, authorize('admin'), getAllUsersForAdmin);
 router.get('/:id', verifyToken, authorizeUserOrAdmin, getUserById);

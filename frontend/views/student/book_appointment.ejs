@@ -293,16 +293,13 @@
           <div class="filter-group">
             <label for="filterSpecialization">Specialization</label>
             <select id="filterSpecialization" onchange="applyFilters()">
-              <option value="">All Specializations</option>
-              <option value="General Physician">General Physician</option>
-              <option value="Psychiatrist">Psychiatrist</option>
-              <option value="Psychologist">Psychologist</option>
-              <option value="Counselor">Counselor</option>
-              <option value="Dentist">Dentist</option>
-              <option value="ENT Specialist">ENT Specialist</option>
-              <option value="Orthopedic">Orthopedic</option>
-              <option value="Dermatologist">Dermatologist</option>
-              <option value="Cardiologist">Cardiologist</option>
+              <% if (specializations && specializations.length > 0) { %>
+                <% specializations.forEach(function(spec) { %>
+                  <option value="<%= spec === 'All Specializations' ? '' : spec %>"><%= spec %></option>
+                <% }); %>
+              <% } else { %>
+                <option value="">All Specializations</option>
+              <% } %>
             </select>
           </div>
 

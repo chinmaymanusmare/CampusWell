@@ -127,6 +127,16 @@ router.post('/change-password', auth, async (req, res) => {
             return res.render('shared/change-password', { user, error: 'Current password is incorrect.', success: null });
         }
 
+        // Validate new password strength
+        const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+        if (!pwdRegex.test(newpassword)) {
+            return res.render('shared/change-password', { 
+                user, 
+                error: 'Password must be at least 8 characters long and include at least one letter and one number', 
+                success: null 
+            });
+        }
+
         const hashedPassword = await bcrypt.hash(newpassword, 10);
         await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
 
@@ -183,7 +193,6 @@ router.get('/users/:id', auth, async (req, res) => {
 router.get('/users/:id/appointments', auth, async (req, res) => {
     try {
         const userId = req.params.id;
-        
         if (req.user.id != userId) {
             return res.status(403).render('error/403');
         }
@@ -230,10 +239,18 @@ router.get('/users/:id/appointments', auth, async (req, res) => {
              ORDER BY da.date, da.start_time, u.name`
         );
 
+        // Fetch distinct specializations
+        const specializationsResult = await pool.query(
+            "SELECT DISTINCT specialization FROM users WHERE specialization IS NOT NULL AND specialization <> '' ORDER BY specialization ASC;"
+        );
+        const specializations = specializationsResult.rows.map(row => row.specialization);
+        specializations.unshift('All Specializations');
+
         res.render('student/book_appointment', { 
             userid: userId,
             doctors: doctorsResult.rows,
             availableSlots: availableSlotsResult.rows,
+            specializations,
             success: req.query.success === 'true'
         });
     } catch (error) {
@@ -586,7 +603,20 @@ router.get('/concerns/newconcern/:id', auth, async (req, res) => {
             return res.status(403).render('error/403');
         }
 
-        res.render('student/new_concern', { userid: userId });
+        // Fetch distinct doctor specializations
+        const specializationsResult = await pool.query(
+            `SELECT DISTINCT specialization 
+             FROM users 
+             WHERE role = 'doctor' AND specialization IS NOT NULL 
+             ORDER BY specialization`
+        );
+
+        const specializations = specializationsResult.rows.map(row => row.specialization);
+
+        res.render('student/new_concern', { 
+            userid: userId,
+            specializations: specializations
+        });
     } catch (error) {
         console.error('Error loading new concern form:', error);
         res.status(500).send('Internal server error');
@@ -753,6 +783,44 @@ router.post('/appointments/:appointmentId/complete', auth, async (req, res) => {
     }
 });
 
+// Doctor - mark appointment as no-show
+router.post('/appointments/:appointmentId/no-show', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'doctor') {
+            return res.status(403).render('error/403');
+        }
+
+        const appointmentId = req.params.appointmentId;
+        const doctorId = req.user.id;
+
+        // Verify the appointment belongs to this doctor
+        const appointmentCheck = await pool.query(
+            'SELECT doctor_id FROM appointments WHERE id = $1',
+            [appointmentId]
+        );
+
+        if (appointmentCheck.rows.length === 0) {
+            return res.status(404).send('Appointment not found');
+        }
+
+        if (appointmentCheck.rows[0].doctor_id != doctorId) {
+            return res.status(403).send('Unauthorized');
+        }
+
+        // Update appointment status to no_show
+        await pool.query(
+            `UPDATE appointments SET status = 'no_show' WHERE id = $1`,
+            [appointmentId]
+        );
+
+        // Redirect back to appointments page with success message
+        res.redirect(`/appointments/doctor/${doctorId}?success=appointment_no_show`);
+    } catch (error) {
+        console.error('Error marking appointment no-show:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
 // Doctor - approve referrals
 router.get('/referrals/doctor/:id', auth, async (req, res) => {
     try {
@@ -822,7 +890,7 @@ router.get('/concerns/doctor/:id', auth, async (req, res) => {
         const specialization = userResult.rows[0]?.specialization;
 
         const concernsResult = await pool.query(
-            "SELECT * FROM concerns WHERE status = 'pending' AND category = $1 ORDER BY created_at DESC",
+            "SELECT * FROM concerns WHERE status = 'pending' AND (category = $1 or category = 'Other') ORDER BY created_at DESC",
             [specialization]
         );
 
@@ -1198,6 +1266,17 @@ router.post('/admin/change-password', auth, async (req, res) => {
             return res.render('admin/change-password', { 
                 user: adminResult.rows[0], 
                 error: 'Old password is incorrect.',
+                success: null
+            });
+        }
+
+        // Validate new password strength
+        const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+        if (!pwdRegex.test(newpassword)) {
+            const adminResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+            return res.render('admin/change-password', { 
+                user: adminResult.rows[0], 
+                error: 'Password must be at least 8 characters long and include at least one letter and one number',
                 success: null
             });
         }

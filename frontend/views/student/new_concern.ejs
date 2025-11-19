@@ -31,19 +31,9 @@
             <label for="category">Category</label>
             <select id="category" name="category" required>
               <option value="">Select Category</option>
-              <option value="General Physician">General Physician</option>
-              <option value="Paediatrician">Paediatrician</option>
-              <option value="Consultant Psychiatrist">Consultant Psychiatrist</option>
-              <option value="Physiotherapist">Physiotherapist</option>
-              <option value="Doctor of Medicine in Homoeopathy">Doctor of Medicine in Homoeopathy</option>
-              <option value="Psychiatrist">Psychiatrist</option>
-              <option value="Psychologist">Psychologist</option>
-              <option value="Counselor">Counselor</option>
-              <option value="Dentist">Dentist</option>
-              <option value="ENT Specialist">ENT Specialist</option>
-              <option value="Orthopedic">Orthopedic</option>
-              <option value="Dermatologist">Dermatologist</option>
-              <option value="Cardiologist">Cardiologist</option>
+              <% specializations.forEach(spec => { %>
+                <option value="<%= spec %>"><%= spec %></option>
+              <% }); %>
               <option value="Other">Other</option>
             </select>
           </div>

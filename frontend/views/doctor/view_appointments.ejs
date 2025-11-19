@@ -132,6 +132,10 @@
       background: #f8d7da;
       color: #721c24;
     }
+    .status-no_show {
+      background: #ffe5b4;
+      color: #8a4b00;
+    }
 
     .success-message {
       max-width: 600px;
@@ -261,6 +265,8 @@
               ✅ Prescription added successfully!
             <% } else if (success === 'appointment_completed') { %>
               ✅ Appointment marked as completed!
+            <% } else if (success === 'appointment_no_show') { %>
+              ⚠️ Appointment marked as NO SHOW!
             <% } %>
           </div>
         <% } %>
@@ -315,6 +321,7 @@
                   <option value="scheduled" selected>Scheduled</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="no_show">No Show</option>
                 </select>
               </div>
             </div>
@@ -363,10 +370,15 @@
                         <a href="/prescriptions/add?student_id=<%= a.student_id %>&student_name=<%= encodeURIComponent(a.student_name) %>" class="btn-action btn-add">
                           ➕ Add Prescription
                         </a>
-                        <% if (a.status !== 'completed' && a.status !== 'cancelled') { %>
+                        <% if (a.status !== 'completed' && a.status !== 'cancelled' && a.status !== 'no_show') { %>
                           <form action="/appointments/<%= a.id %>/complete" method="POST" style="display: inline;">
                             <button type="submit" class="btn-action btn-complete">
                               ✅ Mark Complete
+                            </button>
+                          </form>
+                          <form action="/appointments/<%= a.id %>/no-show" method="POST" style="display: inline;">
+                            <button type="submit" class="btn-action btn-complete" title="Mark as No Show">
+                              🚫 Mark No-Show
                             </button>
                           </form>
                         <% } %>
