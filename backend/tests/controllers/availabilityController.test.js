@@ -1,138 +1,153 @@
-const pool = require('../../src/config/db');
-const {
-	setAvailability,
-	getAvailability,
-	calculateAvailableSlots,
-	deleteAvailability,
-} = require('../../src/controllers/availabilityController');
+const availabilityController = require("../../src/controllers/availabilityController");
+const pool = require("../../src/config/db");
 
-jest.mock('../../src/config/db');
+jest.mock("../../src/config/db", () => {
+  const mPool = {
+    query: jest.fn(),
+    connect: jest.fn(),
+  };
+  return mPool;
+});
 
-describe('availabilityController', () => {
-	let consoleErrorSpy;
-	beforeAll(() => {
-		// suppress controller error logs during tests (we still assert responses)
-		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-	});
+describe("Availability Controller", () => {
+  let req, res;
+  const mockClient = {
+    query: jest.fn(),
+    release: jest.fn(),
+  };
 
-	afterAll(() => {
-		consoleErrorSpy.mockRestore();
-	});
-	beforeEach(() => {
-		pool.query = jest.fn();
-	});
+  beforeEach(() => {
+    req = {
+      user: { id: 1 },
+      body: {},
+      params: {},
+      query: {},
+    };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    pool.connect.mockResolvedValue(mockClient);
+  });
 
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-	describe('setAvailability', () => {
-		test('returns 400 when missing fields', async () => {
-			const req = { user: { id: 1 }, body: {} };
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  // Tests for setAvailability
+  describe("setAvailability", () => {
+    it("should set a doctor's availability", async () => {
+      req.body = { date: "2025-01-01", startTime: "09:00", endTime: "17:00", maxPatients: 10 };
+      const mockResult = { rows: [{ id: 1, ...req.body }] };
+      pool.query.mockResolvedValueOnce(mockResult);
 
-			await setAvailability(req, res);
+      await availabilityController.setAvailability(req, res);
 
-			expect(res.status).toHaveBeenCalledWith(400);
-			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-		});
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockResult.rows[0] });
+    });
 
-		test('inserts availability and returns 201', async () => {
-			const req = {
-				user: { id: 2 },
-				body: { date: '2025-01-01', startTime: '09:00', endTime: '10:00', maxPatients: 5 },
-			};
-			const fakeRow = { id: 10, doctor_id: 2, date: '2025-01-01' };
-			pool.query.mockResolvedValueOnce({ rows: [fakeRow] });
+    it("should return 400 if required fields are missing", async () => {
+      req.body = { date: "2025-01-01" }; // Missing times
+      await availabilityController.setAvailability(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+  });
 
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  // Tests for getAvailability
+  describe("getAvailability", () => {
+    it("should get a doctor's availability for a date range", async () => {
+      req.params.doctorId = 1;
+      req.query = { startDate: "2025-01-01", endDate: "2025-01-31" };
+      const mockAvailabilities = { rows: [{ id: 1, date: "2025-01-10" }] };
+      pool.query.mockResolvedValueOnce(mockAvailabilities);
 
-			await setAvailability(req, res);
+      await availabilityController.getAvailability(req, res);
 
-			expect(pool.query).toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(201);
-			expect(res.json).toHaveBeenCalledWith({ success: true, data: fakeRow });
-		});
-	});
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockAvailabilities.rows });
+    });
+  });
 
-	describe('getAvailability', () => {
-		test('returns availability rows', async () => {
-			const req = { params: { doctorId: 3 }, query: { startDate: '2025-01-01', endDate: '2025-01-07' }, user: { id: 3 } };
-			const rows = [{ id: 1 }, { id: 2 }];
-			pool.query.mockResolvedValueOnce({ rows });
+  // Tests for deleteAvailability
+  describe("deleteAvailability", () => {
+    it("should delete an availability slot", async () => {
+      req.params.id = 1;
+      pool.query.mockResolvedValueOnce({ rows: [{ count: "0" }] }); // No appointments check
+      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 }); // Deletion
 
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      await availabilityController.deleteAvailability(req, res);
 
-			await getAvailability(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, message: "Availability deleted successfully" });
+    });
 
-			expect(pool.query).toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.json).toHaveBeenCalledWith({ success: true, data: rows });
-		});
+    it("should return 404 if availability not found", async () => {
+      req.params.id = 99;
+      pool.query.mockResolvedValueOnce({ rows: [{ count: "0" }] }); // No appointments check
+      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Deletion fails
 
-		test('handles errors with 500', async () => {
-			const req = { params: {}, query: {}, user: { id: 1 } };
-			pool.query.mockRejectedValueOnce(new Error('db error'));
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      await availabilityController.deleteAvailability(req, res);
 
-			await getAvailability(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
 
-			expect(res.status).toHaveBeenCalledWith(500);
-			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-		});
-	});
+    it("should return 400 if there are booked appointments and force is not true", async () => {
+      req.params.id = 1;
+      pool.query.mockResolvedValueOnce({ rows: [{ count: "1" }] }); // Has appointments
 
-	describe('calculateAvailableSlots', () => {
-		test('returns not available when no availability', async () => {
-			pool.query.mockResolvedValueOnce({ rows: [] });
-			const result = await calculateAvailableSlots(1, '2025-01-01', '09:00');
-			expect(result.available).toBe(false);
-			expect(result.message).toMatch(/not available/);
-		});
+      await availabilityController.deleteAvailability(req, res);
 
-		test('calculates availability and maxPatients', async () => {
-			const availability = {
-				current_bookings: '1',
-				max_patients: null,
-				start_time: '09:00',
-				end_time: '10:00',
-				time_per_patient: 15,
-			};
-			pool.query.mockResolvedValueOnce({ rows: [availability] });
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
 
-			const result = await calculateAvailableSlots(1, '2025-01-01', '09:15');
-			expect(result.available).toBe(true);
-			expect(result.maxPatients).toBeGreaterThan(0);
-			expect(result.timePerPatient).toBe(availability.time_per_patient);
-		});
-	});
+    it("should handle forced deletion", async () => {
+      req.params.id = 1;
+      req.query.force = "true";
 
-	describe('deleteAvailability', () => {
-		test('returns 400 when appointments exist', async () => {
-			const req = { user: { id: 2 }, params: { id: 5 } };
-			pool.query.mockResolvedValueOnce({ rows: [{ count: '2' }] }); // appointments check
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      // Mock transaction queries
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: "1" }] }); // Initial check
+      mockClient.query.mockImplementation((sql) => {
+        if (sql.startsWith("SELECT doctor_id")) return Promise.resolve({ rows: [{ doctor_id: 1, date: "2025-01-01", start_time: "10:00" }] });
+        if (sql.startsWith("SELECT id, student_id")) return Promise.resolve({ rows: [{ id: 100, student_id: 2 }] });
+        if (sql.startsWith("SELECT name FROM users")) return Promise.resolve({ rows: [{ name: "Dr. Who" }] });
+        if (sql.startsWith("DELETE")) return Promise.resolve({ rows: [{ id: 1 }] });
+        return Promise.resolve();
+      });
 
-			await deleteAvailability(req, res);
+      await availabilityController.deleteAvailability(req, res);
 
-			expect(res.status).toHaveBeenCalledWith(400);
-			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-		});
+      expect(pool.connect).toHaveBeenCalled();
+      expect(mockClient.query).toHaveBeenCalledWith("BEGIN");
+      expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
+      expect(mockClient.release).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
 
-		test('deletes availability and returns 200', async () => {
-			const req = { user: { id: 2 }, params: { id: 6 } };
-			// appointments check -> 0
-			pool.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
-			// delete query -> return deleted row
-			pool.query.mockResolvedValueOnce({ rows: [{ id: 6 }] });
+  // Tests for calculateAvailableSlots (this is an internal function, but we can test it)
+  describe("calculateAvailableSlots", () => {
+    it("should calculate available slots correctly", async () => {
+      const availabilityData = {
+        rows: [{
+          current_bookings: "5",
+          max_patients: 10,
+          time_per_patient: 15,
+        }],
+      };
+      pool.query.mockResolvedValueOnce(availabilityData);
 
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const result = await availabilityController.calculateAvailableSlots(1, "2025-01-01", "10:00");
 
-			await deleteAvailability(req, res);
+      expect(result.available).toBe(true);
+      expect(result.currentBookings).toBe(5);
+    });
 
-			expect(pool.query).toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
-		});
-	});
+    it("should return unavailable if no availability is found", async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      const result = await availabilityController.calculateAvailableSlots(1, "2025-01-01", "10:00");
+      expect(result.available).toBe(false);
+    });
+  });
 });

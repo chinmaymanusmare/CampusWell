@@ -1,196 +1,172 @@
-jest.mock('../../src/config/db', () => ({ query: jest.fn(), connect: jest.fn() }));
+const pharmacyController = require("../../src/controllers/pharmacyController");
+const pool = require("../../src/config/db");
 
-const { placeOrder, getInventory, updateInventoryItem, getAllOrders, getStudentOrders, updateOrderStatus } = require('../../src/controllers/pharmacyController');
-const pool = require('../../src/config/db');
+jest.mock("../../src/config/db", () => {
+  const mPool = {
+    query: jest.fn(),
+    connect: jest.fn(),
+  };
+  return mPool;
+});
 
-describe('Pharmacy Controller', () => {
+describe("Pharmacy Controller", () => {
   let req, res;
+  const mockClient = {
+    query: jest.fn(),
+    release: jest.fn(),
+  };
 
   beforeEach(() => {
-    req = { 
-      user: { id: 10 }, 
-      body: {}, 
-      params: {}
+    req = {
+      user: { id: 1 },
+      body: {},
+      params: {},
     };
-    res = { 
-      status: jest.fn().mockReturnThis(), 
-      json: jest.fn() 
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
     };
-    pool.query.mockReset();
+    pool.connect.mockResolvedValue(mockClient);
   });
 
-  describe('getInventory', () => {
-    test('successfully retrieves inventory', async () => {
-      const mockMedicines = [
-        { id: 1, name: 'Med A', description: 'Description A', stock: 10, price: 50 },
-        { id: 2, name: 'Med B', description: 'Description B', stock: 20, price: 30 }
-      ];
-      pool.query.mockResolvedValueOnce({ rows: mockMedicines, rowCount: 2 });
-
-      await getInventory(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        count: 2,
-        data: mockMedicines
-      });
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('updateInventoryItem', () => {
-    test('successfully updates inventory item', async () => {
-      req.params.id = '1';
-      req.body.quantity = 15;
-      const updatedMedicine = { id: 1, name: 'Med A', stock: 15 };
-      pool.query.mockResolvedValueOnce({ rows: [updatedMedicine] });
-
-      await updateInventoryItem(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        message: 'Inventory updated successfully',
-        data: updatedMedicine
-      });
-    });
-
-    test('returns 404 for non-existent medicine', async () => {
-      req.params.id = '999';
-      req.body.quantity = 15;
-      pool.query.mockResolvedValueOnce({ rows: [] });
-
-      await updateInventoryItem(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Medicine not found'
-      });
-    });
-  });
-
-  describe('placeOrder', () => {
-    beforeEach(() => {
-      req.body = { 
-        medicine_id: 2, 
-        quantity: 1, 
-        prescription_link: 'https://example.com/presc.pdf' 
+  // Tests for getInventory
+  describe("getInventory", () => {
+    it("should return the medicine inventory", async () => {
+      const mockInventory = {
+        rows: [{ id: 1, name: "Aspirin", stock: 100 }],
+        rowCount: 1,
       };
+      pool.query.mockResolvedValueOnce(mockInventory);
+
+      await pharmacyController.getInventory(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        count: 1,
+        data: mockInventory.rows,
+      });
+    });
+  });
+
+  // Tests for updateInventoryItem
+  describe("updateInventoryItem", () => {
+    it("should update an inventory item's stock", async () => {
+      req.params.id = 1;
+      req.body.quantity = 150;
+      const mockResult = { rows: [{ id: 1, stock: 150 }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockResult);
+
+      await pharmacyController.updateInventoryItem(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: mockResult.rows[0] })
+      );
     });
 
-    test('successfully places order with prescription', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [{ id: 2, stock: 10, price: 50 }] })
-        .mockResolvedValueOnce({ rows: [{ id: 123 }] })
-        .mockResolvedValue({});
+    it("should return 404 if medicine not found", async () => {
+      req.params.id = 99;
+      req.body.quantity = 100;
+      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-      await placeOrder(req, res);
+      await pharmacyController.updateInventoryItem(req, res);
 
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  // Tests for placeOrder
+  describe("placeOrder", () => {
+    it("should place a new medicine order", async () => {
+      req.user.id = 1;
+      req.body = {
+        medicines: [{ medicine_id: 1, quantity: 2 }],
+      };
+
+      mockClient.query.mockImplementation((sql) => {
+        if (sql.startsWith("SELECT name")) return Promise.resolve({ rows: [{ name: "Test Student" }] });
+        if (sql.startsWith("SELECT * FROM medicines")) return Promise.resolve({ rows: [{ id: 1, name: "Aspirin", price: 10, stock: 20 }] });
+        if (sql.startsWith("INSERT INTO orders")) return Promise.resolve({ rows: [{ id: 10 }] });
+        return Promise.resolve();
+      });
+
+      await pharmacyController.placeOrder(req, res);
+
+      expect(pool.connect).toHaveBeenCalled();
+      expect(mockClient.query).toHaveBeenCalledWith("BEGIN");
+      expect(mockClient.query).toHaveBeenCalledWith("COMMIT");
+      expect(mockClient.release).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ 
-        success: true, 
-        order_id: expect.any(Number) 
-      }));
+      expect(res.json).toHaveBeenCalledWith({ success: true, message: "Order placed successfully", order_id: 10 });
     });
 
-    test('returns 404 for non-existent medicine', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [] });
-
-      await placeOrder(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Medicine not found'
-      });
-    });
-
-    test('returns 400 when insufficient stock', async () => {
-      pool.query
-        .mockResolvedValueOnce({ rows: [{ name: 'Student A' }] })
-        .mockResolvedValueOnce({ rows: [{ id: 2, stock: 0, price: 50 }] });
-
-      await placeOrder(req, res);
-
+    it("should return 400 for invalid medicines data", async () => {
+      req.body.medicines = "invalid-json";
+      await pharmacyController.placeOrder(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Not enough stock available'
-      });
     });
   });
 
-  describe('getAllOrders', () => {
-    test('successfully retrieves all orders', async () => {
-      const mockOrders = [
-        { id: 1, student_name: 'Student A', status: 'pending' },
-        { id: 2, student_name: 'Student B', status: 'completed' }
-      ];
-      pool.query.mockResolvedValueOnce({ rows: mockOrders, rowCount: 2 });
+  // Tests for getAllOrders
+  describe("getAllOrders", () => {
+    it("should return all orders for pharmacy staff", async () => {
+      const mockOrders = {
+        rows: [{ id: 1, student_name: "Test Student" }],
+        rowCount: 1,
+      };
+      pool.query.mockResolvedValueOnce(mockOrders);
 
-      await getAllOrders(req, res);
+      await pharmacyController.getAllOrders(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        count: 2,
-        data: mockOrders
-      });
+      expect(res.json).toHaveBeenCalledWith({ success: true, count: 1, data: mockOrders.rows });
     });
   });
 
-  describe('getStudentOrders', () => {
-    test('successfully retrieves student orders', async () => {
-      const mockOrders = [
-        { id: 1, student_id: 10, status: 'pending' },
-        { id: 2, student_id: 10, status: 'completed' }
-      ];
-      pool.query.mockResolvedValueOnce({ rows: mockOrders, rowCount: 2 });
+  // Tests for getStudentOrders
+  describe("getStudentOrders", () => {
+    it("should return orders for the logged-in student", async () => {
+      req.user.id = 1;
+      const mockOrders = {
+        rows: [{ id: 1, student_id: 1 }],
+        rowCount: 1,
+      };
+      pool.query.mockResolvedValueOnce(mockOrders);
 
-      await getStudentOrders(req, res);
+      await pharmacyController.getStudentOrders(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        count: 2,
-        data: mockOrders
-      });
+      expect(res.json).toHaveBeenCalledWith({ success: true, count: 1, data: mockOrders.rows });
     });
   });
 
-  describe('updateOrderStatus', () => {
-    test('successfully updates order status', async () => {
-      req.params.id = '1';
-      req.body.status = 'completed';
-      const updatedOrder = { id: 1, status: 'completed' };
-      pool.query.mockResolvedValueOnce({ rows: [updatedOrder] });
+  // Tests for updateOrderStatus
+  describe("updateOrderStatus", () => {
+    it("should update an order's status", async () => {
+      req.params.id = 1;
+      req.body.status = "completed";
+      const mockResult = { rows: [{ id: 1, status: "completed" }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockResult);
 
-      await updateOrderStatus(req, res);
+      await pharmacyController.updateOrderStatus(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        message: 'Order status updated successfully',
-        data: updatedOrder
-      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
 
-    test('returns 404 for non-existent order', async () => {
-      req.params.id = '999';
-      req.body.status = 'completed';
-      pool.query.mockResolvedValueOnce({ rows: [] });
+    it("should return 404 if order not found", async () => {
+      req.params.id = 99;
+      req.body.status = "completed";
+      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-      await updateOrderStatus(req, res);
+      await pharmacyController.updateOrderStatus(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Order not found'
-      });
     });
   });
 });

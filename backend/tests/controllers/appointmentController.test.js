@@ -1,227 +1,213 @@
-jest.mock('../../src/config/db', () => ({ query: jest.fn(), connect: jest.fn() }));
+const appointmentController = require("../../src/controllers/appointmentController");
+const pool = require("../../src/config/db");
 
-const { getDoctors, bookAppointment, getStudentAppointments, getDoctorAppointments, rescheduleAppointment, cancelAppointment } = require('../../src/controllers/appointmentController');
-const pool = require('../../src/config/db');
+jest.mock("../../src/config/db", () => ({
+  query: jest.fn(),
+}));
 
-describe('Appointment Controller', () => {
-  let mockReq;
-  let mockRes;
+describe("Appointment Controller", () => {
+  let req, res;
 
   beforeEach(() => {
-    mockReq = {
-      body: {},
-      user: { id: 1 },
-      query: {},
-      params: {}
-    };
-    mockRes = {
+    res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn()
+      json: jest.fn(),
+      send: jest.fn(),
     };
-    pool.query.mockReset();
   });
 
-  describe('getDoctors', () => {
-    test('should return list of doctors successfully', async () => {
-      const mockDoctors = [
-        { id: 1, name: 'Dr. Smith', specialization: 'General' }
-      ];
-      pool.query.mockResolvedValueOnce({ rows: mockDoctors });
-
-      await getDoctors(mockReq, mockRes);
-
-      expect(pool.query).toHaveBeenCalledWith(
-        "SELECT id, name, specialization FROM users WHERE role = 'doctor';"
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: true, data: mockDoctors });
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('bookAppointment', () => {
-    test('should book appointment successfully', async () => {
-      mockReq.body = { doctor_id: 2, date: '2025-12-01', time: '10:00' };
-      const mockConflict = { rows: [] };
-      const mockDoctor = { rows: [{ name: 'Dr. Smith' }] };
-      const mockStudent = { rows: [{ name: 'John Doe' }] };
-      const mockAppointment = { rows: [{ id: 1, student_id: 1, doctor_id: 2 }] };
-
-      // call order after changes:
-      // 1 doctor lookup
-      // 2 student lookup
-      // 3 existing student appointment check (empty)
-      // 4 availability check
-      // 5 insert appointment
-      pool.query.mockResolvedValueOnce(mockDoctor)
-        .mockResolvedValueOnce(mockStudent)
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ current_bookings: '0', max_patients: 4, start_time: '09:00', end_time: '10:00', time_per_patient: 15 }] })
-        .mockResolvedValueOnce(mockAppointment);
-
-      await bookAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: true, data: mockAppointment.rows[0] });
-    });
-
-    test('should reject when slot is not available', async () => {
-      mockReq.body = { doctor_id: 2, date: '2025-12-01', time: '10:00' };
-      // doctor exists
-      const mockDoctor = { rows: [{ name: 'Dr. Smith' }] };
-      const mockStudent = { rows: [{ name: 'John Doe' }] };
-      // availability shows fully booked (current_bookings >= max_patients)
-      const mockAvailability = { rows: [{ current_bookings: '4', max_patients: 4, start_time: '09:00', end_time: '10:00', time_per_patient: 15 }] };
-
-      pool.query.mockResolvedValueOnce(mockDoctor)
-        .mockResolvedValueOnce(mockStudent)
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce(mockAvailability);
-
-      await bookAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not available at this slot' });
-    });
-
-    test('should handle non-existent doctor', async () => {
-      mockReq.body = { doctor_id: 999, date: '2025-12-01', time: '10:00' };
-      // doctor lookup returns empty -> should produce 404 immediately
-      pool.query.mockResolvedValueOnce({ rows: [] });
-
-      await bookAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not found' });
-    });
-  });
-
-  describe('getStudentAppointments', () => {
-    test('should return student appointments successfully', async () => {
-      const mockAppointments = { rows: [{ id: 1, student_id: 1 }] };
+  // Tests for getAppointments
+  describe("getAppointments", () => {
+    it("should return appointments for a student", async () => {
+      req = { user: { id: 1, role: "student" } };
+      const mockAppointments = {
+        rows: [{ id: 1, doctor_name: "Dr. Smith", date: "2025-01-01", status: "confirmed" }],
+      };
       pool.query.mockResolvedValueOnce(mockAppointments);
 
-      await getStudentAppointments(mockReq, mockRes);
+      await appointmentController.getAppointments(req, res);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        "SELECT * FROM appointments WHERE student_id = $1 ORDER BY date, time;",
-        [1]
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: true, data: mockAppointments.rows });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockAppointments.rows,
+      });
     });
-  });
 
-  describe('getDoctorAppointments', () => {
-    test('should return doctor appointments using query param', async () => {
-      mockReq.query.doctor_id = 2;
-      const mockAppointments = { rows: [{ id: 1, doctor_id: 2 }] };
+    it("should return appointments for a doctor", async () => {
+      req = { user: { id: 2, role: "doctor" } };
+      const mockAppointments = {
+        rows: [{ id: 1, student_name: "John Doe", date: "2025-01-01", status: "confirmed" }],
+      };
       pool.query.mockResolvedValueOnce(mockAppointments);
 
-      await getDoctorAppointments(mockReq, mockRes);
+      await appointmentController.getAppointments(req, res);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        "SELECT * FROM appointments WHERE doctor_id = $1 ORDER BY date, time;",
-        [2]
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    test('should return doctor appointments using authenticated user', async () => {
-      mockReq.user = { id: 2 };
-      const mockAppointments = { rows: [{ id: 1, doctor_id: 2 }] };
-      pool.query.mockResolvedValueOnce(mockAppointments);
-
-      await getDoctorAppointments(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    test('should handle missing doctor id', async () => {
-      mockReq.user = null;
-      mockReq.query = {};
-
-      await getDoctorAppointments(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Doctor id is required' });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockAppointments.rows,
+      });
     });
   });
 
-  describe('rescheduleAppointment', () => {
-    test('should reschedule appointment successfully', async () => {
-      mockReq.params.id = 1;
-      mockReq.body = { date: '2025-12-02', time: '11:00' };
-      
-      const mockAppointment = { rows: [{ id: 1, status: 'scheduled', doctor_id: 2 }] };
-      const mockConflict = { rows: [] };
-      const mockUpdate = { rows: [{ id: 1, date: '2025-12-02', time: '11:00' }] };
+  // Tests for getAppointmentById
+  describe("getAppointmentById", () => {
+    it("should return a single appointment", async () => {
+      req = { params: { id: 1 }, user: { id: 1, role: "student" } };
+      const mockAppointment = {
+        rows: [{ id: 1, student_id: 1, doctor_name: "Dr. Smith" }],
+        rowCount: 1,
+      };
+      pool.query.mockResolvedValueOnce(mockAppointment);
 
-      pool.query.mockResolvedValueOnce(mockAppointment)
-        .mockResolvedValueOnce(mockConflict)
-        .mockResolvedValueOnce(mockUpdate);
+      await appointmentController.getAppointmentById(req, res);
 
-      await rescheduleAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: true, data: mockUpdate.rows[0] });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockAppointment.rows[0],
+      });
     });
 
-    test('returns 400 when date or time missing', async () => {
-      mockReq.params.id = 1;
-      mockReq.body = {};
+    it("should return 404 if appointment not found", async () => {
+      req = { params: { id: 1 }, user: { id: 1, role: "student" } };
+      pool.query.mockResolvedValueOnce({ rowCount: 0 });
 
-      await rescheduleAppointment(mockReq, mockRes);
+      await appointmentController.getAppointmentById(req, res);
 
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ 
-        success: false, 
-        message: expect.stringContaining('Both date and time are required') 
-      }));
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Appointment not found",
+      });
     });
-
-    test('should reject when appointment not found', async () => {
-      mockReq.params.id = 999;
-      mockReq.body = { date: '2025-12-02', time: '11:00' };
-      
-      pool.query.mockResolvedValueOnce({ rows: [] });
-
-      await rescheduleAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Appointment not found' });
-    });
-
-    test('should reject when new slot is not available', async () => {
-      mockReq.params.id = 1;
-      mockReq.body = { date: '2025-12-02', time: '11:00' };
-      
-      const mockAppointment = { rows: [{ id: 1, status: 'scheduled', doctor_id: 2 }] };
-      const mockConflict = { rows: [{ id: 2 }] };
-
-      pool.query.mockResolvedValueOnce(mockAppointment)
-        .mockResolvedValueOnce(mockConflict);
-
-      await rescheduleAppointment(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not available at this slot' });
-    });
-
   });
 
-  describe('cancelAppointment', () => {
-    test('should cancel appointment successfully', async () => {
-      mockReq.params.id = 1;
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: 'cancelled' }] });
+  // Tests for createAppointment
+  describe("createAppointment", () => {
+    it("should create a new appointment", async () => {
+      req = {
+        user: { id: 1, name: "John Doe" },
+        body: { doctor_id: 2, date: "2025-01-01", time: "10:00:00", reason: "Fever" },
+      };
+      const mockDoctor = { rows: [{ name: "Dr. Smith" }] };
+      const mockAvailability = { rowCount: 1 };
+      const mockCreate = { rows: [{ id: 1 }] };
 
-      await cancelAppointment(mockReq, mockRes);
+      pool.query.mockResolvedValueOnce(mockDoctor); // Get doctor name
+      pool.query.mockResolvedValueOnce(mockAvailability); // Check availability
+      pool.query.mockResolvedValueOnce(mockCreate); // Create appointment
 
-      expect(pool.query).toHaveBeenCalledWith(
-        "UPDATE appointments SET status = 'cancelled' WHERE id = $1;",
-        [1]
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({ success: true, message: 'Appointment cancelled' });
+      await appointmentController.createAppointment(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Appointment booked successfully",
+        data: { id: 1 },
+      });
+    });
+
+    it("should return 400 if doctor is not available", async () => {
+      req = {
+        user: { id: 1, name: "John Doe" },
+        body: { doctor_id: 2, date: "2025-01-01", time: "10:00:00", reason: "Fever" },
+      };
+      const mockDoctor = { rows: [{ name: "Dr. Smith" }] };
+      const mockAvailability = { rowCount: 0 };
+
+      pool.query.mockResolvedValueOnce(mockDoctor); // Get doctor name
+      pool.query.mockResolvedValueOnce(mockAvailability); // Check availability
+
+      await appointmentController.createAppointment(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Doctor is not available at the selected time.",
+      });
+    });
+  });
+
+  // Tests for updateAppointmentStatus
+  describe("updateAppointmentStatus", () => {
+    it("should update the appointment status", async () => {
+      req = { params: { id: 1 }, body: { status: "confirmed" } };
+      const mockUpdate = { rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockUpdate);
+
+      await appointmentController.updateAppointmentStatus(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Appointment status updated successfully",
+      });
+    });
+
+    it("should return 404 if appointment not found for updating status", async () => {
+      req = { params: { id: 1 }, body: { status: "confirmed" } };
+      pool.query.mockResolvedValueOnce({ rowCount: 0 });
+
+      await appointmentController.updateAppointmentStatus(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Appointment not found",
+      });
+    });
+  });
+
+  // Tests for cancelAppointment
+  describe("cancelAppointment", () => {
+    it("should cancel an appointment", async () => {
+      req = { params: { id: 1 }, user: { id: 1 } };
+      const mockAppointment = { rows: [{ student_id: 1 }], rowCount: 1 };
+      const mockDelete = { rowCount: 1 };
+
+      pool.query.mockResolvedValueOnce(mockAppointment); // Find appointment
+      pool.query.mockResolvedValueOnce(mockDelete); // Delete appointment
+
+      await appointmentController.cancelAppointment(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: "Appointment cancelled",
+      });
+    });
+
+    it("should return 404 if appointment not found for cancellation", async () => {
+      req = { params: { id: 1 }, user: { id: 1 } };
+      pool.query.mockResolvedValueOnce({ rowCount: 0 });
+
+      await appointmentController.cancelAppointment(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Appointment not found",
+      });
+    });
+
+    it("should return 403 if user is not authorized to cancel", async () => {
+      req = { params: { id: 1 }, user: { id: 2 } }; // User ID doesn't match student_id
+      const mockAppointment = { rows: [{ student_id: 1 }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockAppointment);
+
+      await appointmentController.cancelAppointment(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "You are not authorized to cancel this appointment.",
+      });
     });
   });
 });

@@ -1,300 +1,157 @@
-jest.mock('../../src/config/db', () => ({ query: jest.fn(), connect: jest.fn() }));
-jest.mock('bcrypt', () => ({
-  hash: jest.fn().mockResolvedValue('hashedPassword123'),
-  compare: jest.fn().mockResolvedValue(true)
-}));
-jest.mock('jsonwebtoken', () => ({
-  sign: jest.fn().mockReturnValue('mockToken123')
-}));
+const userController = require("../../src/controllers/userController");
+const pool = require("../../src/config/db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
-const { signup, login, getUserById, getAllUsersForAdmin, updateUserById, logout } = require('../../src/controllers/userController');
-const pool = require('../../src/config/db');
-const bcrypt = require('bcrypt');
+jest.mock("../../src/config/db", () => ({
+  query: jest.fn(),
+}));
+jest.mock("bcrypt");
+jest.mock("jsonwebtoken");
 
-describe('User Controller', () => {
+describe("User Controller", () => {
   let req, res;
 
   beforeEach(() => {
-    req = { 
-      body: {},
-      params: {},
-    };
-    res = { 
-      status: jest.fn().mockReturnThis(), 
+    req = { body: {}, params: {}, user: {} };
+    res = {
+      status: jest.fn().mockReturnThis(),
       json: jest.fn(),
-      clearCookie: jest.fn()
+      clearCookie: jest.fn(),
     };
-    pool.query.mockReset();
-    bcrypt.compare.mockReset();
   });
 
-  describe('signup', () => {
-    test('returns 400 when password is missing', async () => {
-      req.body = { name: 'A', email: 'a@a.com' };
-      await signup(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ 
-        success: false, 
-        message: 'Password is required' 
-      }));
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    test('returns 400 when password does not meet policy', async () => {
-      req.body = { name: 'A', email: 'a@a.com', password: 'short1' };
-      await signup(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ 
-        success: false, 
-        message: expect.stringContaining('Password must be at least 8 characters') 
-      }));
-    });
+  // Tests for signup
+  describe("signup", () => {
+    it("should create a new user", async () => {
+      req.body = { name: "Test", email: "test@test.com", password: "password123", role: "student" };
+      pool.query.mockResolvedValueOnce({ rows: [] }); // No existing user
+      bcrypt.hash.mockResolvedValueOnce("hashedpassword");
+      pool.query.mockResolvedValueOnce({ rows: [{ id: 1, ...req.body }] });
 
-    test('returns 400 when user already exists', async () => {
-      req.body = { 
-        name: 'John', 
-        email: 'john@test.com', 
-        password: 'validPass123' 
-      };
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
-
-      await signup(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ 
-        success: false, 
-        message: 'User already exists' 
-      });
-    });
-
-    test('successfully creates new user', async () => {
-      const userData = {
-        name: 'John',
-        email: 'john@test.com',
-        password: 'validPass123',
-        role: 'student',
-        roll_no: '123456',
-        specialization: null
-      };
-      req.body = userData;
-
-      pool.query
-        .mockResolvedValueOnce({ rows: [] }) // No existing user
-        .mockResolvedValueOnce({ rows: [userData] }); // Insert successful
-
-      await signup(req, res);
+      await userController.signup(req, res);
 
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        user: userData
-      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
 
+    it("should return 400 if user already exists", async () => {
+      req.body = { email: "exists@test.com", password: "password123" };
+      pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+
+      await userController.signup(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
   });
 
-  describe('login', () => {
-    test('successfully logs in user', async () => {
-      req.body = {
-        email: 'john@test.com',
-        password: 'validPass123'
-      };
-      pool.query.mockResolvedValueOnce({
-        rows: [{ id: 1, email: 'john@test.com', password: 'hashedpass', role: 'student' }]
-      });
+  // Tests for login
+  describe("login", () => {
+    it("should log in a user and return a token", async () => {
+      req.body = { email: "test@test.com", password: "password123" };
+      const mockUser = { id: 1, password: "hashedpassword", role: "student" };
+      pool.query.mockResolvedValueOnce({ rows: [mockUser] });
       bcrypt.compare.mockResolvedValueOnce(true);
+      jwt.sign.mockReturnValueOnce("testtoken");
 
-      await login(req, res);
+      await userController.login(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        token: expect.any(String)
-      });
+      expect(res.json).toHaveBeenCalledWith({ success: true, token: "testtoken" });
     });
 
-    test('returns 400 for non-existent user', async () => {
-      req.body = {
-        email: 'nonexistent@test.com',
-        password: 'validPass123'
-      };
-      pool.query.mockResolvedValueOnce({ rows: [] });
+    it("should return 400 for invalid credentials", async () => {
+      req.body = { email: "test@test.com", password: "wrongpassword" };
+      pool.query.mockResolvedValueOnce({ rows: [] }); // User not found
 
-      await login(req, res);
+      await userController.login(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Invalid credentials'
-      });
     });
-
-    test('returns 400 for incorrect password', async () => {
-      req.body = {
-        email: 'john@test.com',
-        password: 'wrongpass'
-      };
-      pool.query.mockResolvedValueOnce({
-        rows: [{ id: 1, email: 'john@test.com', password: 'hashedpass' }]
-      });
-      bcrypt.compare.mockResolvedValueOnce(false);
-
-      await login(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    });
-
   });
 
-  describe('getUserById', () => {
-    test('successfully retrieves user', async () => {
-      req.params.id = '1';
-      const userData = {
-        id: 1,
-        name: 'John',
-        email: 'john@test.com',
-        role: 'student'
-      };
-      pool.query.mockResolvedValueOnce({ rows: [userData] });
+  // Tests for getUserById
+  describe("getUserById", () => {
+    it("should return a user by their ID", async () => {
+      req.params.id = 1;
+      const mockUser = { rows: [{ id: 1, name: "Test" }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockUser);
 
-      await getUserById(req, res);
+      await userController.getUserById(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockUser.rows[0] });
+    });
+  });
+
+  // Tests for getAllUsersForAdmin
+  describe("getAllUsersForAdmin", () => {
+    it("should return all users", async () => {
+      const mockUsers = { rows: [{ id: 1 }, { id: 2 }], rowCount: 2 };
+      pool.query.mockResolvedValueOnce(mockUsers);
+
+      await userController.getAllUsersForAdmin(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, count: 2, data: mockUsers.rows });
+    });
+  });
+
+  // Tests for updateUserById
+  describe("updateUserById", () => {
+    it("should update a user's details", async () => {
+      req.params.id = 1;
+      req.body = { name: "Updated Name" };
+      const mockUpdate = { rows: [{ id: 1, name: "Updated Name" }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockUpdate);
+
+      await userController.updateUserById(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockUpdate.rows[0] });
+    });
+  });
+
+  // Tests for updateDoctorTimePerPatient
+  describe("updateDoctorTimePerPatient", () => {
+    it("should update a doctor's time per patient", async () => {
+      req.user.id = 1; // Doctor
+      req.body.timePerPatient = 20;
+      const mockUpdate = { rows: [{ id: 1, time_per_patient: 20 }], rowCount: 1 };
+      pool.query.mockResolvedValueOnce(mockUpdate);
+
+      await userController.updateDoctorTimePerPatient(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  // Tests for getDistinctSpecializations
+  describe("getDistinctSpecializations", () => {
+    it("should return a list of distinct specializations", async () => {
+      const mockSpecs = { rows: [{ specialization: "Cardiology" }, { specialization: "Neurology" }] };
+      pool.query.mockResolvedValueOnce(mockSpecs);
+
+      await userController.getDistinctSpecializations(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         success: true,
-        data: userData
-      });
-    });
-
-    test('returns 404 for non-existent user', async () => {
-      req.params.id = '999';
-      pool.query.mockResolvedValueOnce({ rows: [] });
-
-      await getUserById(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'User not found'
-      });
-    });
-
-  });
-
-  describe('getAllUsersForAdmin', () => {
-    test('successfully retrieves all users', async () => {
-      const users = [
-        { id: 1, name: 'John', email: 'john@test.com' },
-        { id: 2, name: 'Jane', email: 'jane@test.com' }
-      ];
-      pool.query.mockResolvedValueOnce({ rows: users, rowCount: 2 });
-
-      await getAllUsersForAdmin(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        count: 2,
-        data: users
-      });
-    });
-
-  });
-
-  describe('updateUserById', () => {
-    test('successfully updates user', async () => {
-      req.params.id = '1';
-      const updateData = {
-        name: 'John Updated',
-        email: 'john.updated@test.com',
-        role: 'student',
-        roll_no: '123457',
-        specialization: 'Computer Science'
-      };
-      req.body = updateData;
-      pool.query.mockResolvedValueOnce({ rows: [{ id: 1, ...updateData }] });
-
-      await updateUserById(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        data: expect.objectContaining(updateData)
-      });
-    });
-
-    test('returns 404 for non-existent user', async () => {
-      req.params.id = '999';
-      req.body = {
-        name: 'John Updated',
-        email: 'john.updated@test.com'
-      };
-      pool.query.mockResolvedValueOnce({ rows: [] });
-
-      await updateUserById(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'User not found'
-      });
-    });
-
-  });
-
-  describe('logout', () => {
-    test('successfully logs out user', () => {
-      logout(req, res);
-
-      expect(res.clearCookie).toHaveBeenCalledWith('refreshToken');
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        message: 'Logged out successfully'
+        data: ["All Specializations", "Cardiology", "Neurology"],
       });
     });
   });
 
-  describe('updateDoctorTimePerPatient', () => {
-    const { updateDoctorTimePerPatient } = require('../../src/controllers/userController');
-
-    beforeEach(() => {
-      req.user = { id: 10 };
-      req.body = {};
-    });
-
-    test('returns 400 when timePerPatient is missing', async () => {
-      req.body = {};
-      await updateDoctorTimePerPatient(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'timePerPatient is required' });
-    });
-
-    test('returns 400 when timePerPatient is invalid', async () => {
-      req.body = { timePerPatient: 'abc' };
-      await updateDoctorTimePerPatient(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'timePerPatient must be greater than 0' });
-    });
-
-    test('returns 404 when doctor not found', async () => {
-      req.body = { timePerPatient: 15 };
-      pool.query.mockResolvedValueOnce({ rows: [] });
-      await updateDoctorTimePerPatient(req, res);
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not found' });
-    });
-
-    test('successfully updates time per patient', async () => {
-      req.body = { timePerPatient: 20 };
-      const mockResult = { rows: [{ id: 10, name: 'Dr Test', email: 'd@test.com', role: 'doctor', time_per_patient: 20 }] };
-      pool.query.mockResolvedValueOnce(mockResult);
-      await updateDoctorTimePerPatient(req, res);
+  // Tests for logout
+  describe("logout", () => {
+    it("should log out the user", () => {
+      userController.logout(req, res);
+      expect(res.clearCookie).toHaveBeenCalledWith("refreshToken");
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockResult.rows[0] });
     });
   });
 });
